@@ -1,8 +1,18 @@
 const express = require("express");
+const router = express.Router();
 
-const indexRoutes = (app) => {
-//   app.use("/auth", AuthRoutes);
+// Use the routes
+const initRoutes = (app) => {
+  router.use("/auth", require("./auth"));
 
+
+  router.get("/", (req, res) => {
+    return res.json({
+      version: "beta",
+    });
+  });
+
+  return app.use("/api", router);
 };
 
-module.exports = indexRoutes;
+module.exports = initRoutes;

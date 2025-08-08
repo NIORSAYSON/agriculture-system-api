@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Firebase ID Token Generator</title>
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+        import { getAuth, signInWithPopup, GoogleAuthProvider } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
+
+        // Replace with your Firebase web app config from Firebase Console
+        const firebaseConfig = {
+            apiKey: "AIzaSyCuuodeNqJoCm6S6c5EGfy8J_I3Bey6ST4",
+            authDomain: "agriculture-system-api.firebaseapp.com",
+            projectId: "agriculture-system-api",
+            storageBucket: "agriculture-system-api.firebasestorage.app",
+            messagingSenderId: "627001276252",
+            appId: "1:627001276252:web:8b989af09fdf8dbee63399",
+            measurementId: "G-PQ94Q3SBKL"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const provider = new GoogleAuthProvider();
+
+        document.addEventListener("DOMContentLoaded", () => {
+            document.getElementById("login").onclick = async () => {
+                try {
+                    const result = await signInWithPopup(auth, provider);
+                    const token = await result.user.getIdToken();
+                    document.getElementById("output").textContent = token;
+                    console.log("ID Token:", token);
+                } catch (error) {
+                    console.error("Error signing in:", error);
+                }
+            };
+        });
+    </script>
+</head>
+
+<body>
+    <h1>Firebase ID Token Generator</h1>
+    <button id="login">Login with Google</button>
+    <pre id="output" style="white-space: pre-wrap; word-wrap: break-word;"></pre>
+</body>
+
+</html>
