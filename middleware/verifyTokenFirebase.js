@@ -17,6 +17,6 @@ exports.verifyFirebaseToken = async function (req, res, next) {
     next();
   } catch (error) {
     console.error("Token verification failed:", error);
-    res.status(401).json({ message: "Invalid token", error: error.message });
+    return res.status(401).json({ message: "Token has expired." });
   }
 };
