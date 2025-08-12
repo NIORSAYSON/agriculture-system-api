@@ -147,8 +147,10 @@ exports.login = async (req, res) => {
         accessToken,
         refreshToken,
       },
-      role: userData.role,
-      id_number: userData.id_number,
+      user: {
+        role: userData.role,
+        id_number: userData.id_number,
+      },
     });
   } catch (error) {
     return res.status(500).json({
