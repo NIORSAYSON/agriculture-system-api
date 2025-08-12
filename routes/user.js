@@ -8,4 +8,6 @@ router.post("/register", validation.Email, validation.Password, auth.register);
 
 router.get("/", user.getAllUsers);
 
+router.get("/:id_number", user.getUserByIdNumber);
+
 module.exports = router;
