@@ -75,7 +75,9 @@ exports.logout = async (req, res) => {
         });
       } catch (err) {
         if (err.code === "auth/id-token-revoked") {
-          return res.status(400).json({ error: "Token already revoked. User is logged out." });
+          return res
+            .status(400)
+            .json({ error: "Token already revoked. User is logged out." });
         }
         throw err;
       }
@@ -99,7 +101,9 @@ exports.logout = async (req, res) => {
 
     return res.status(400).json({ error: "Unknown token type" });
   } catch (error) {
-    return res.status(500).json({ message: "Internal Server Error", error: error.message });
+    return res
+      .status(500)
+      .json({ message: "Internal Server Error", error: error.message });
   }
 };
 
@@ -143,6 +147,10 @@ exports.login = async (req, res) => {
         accessToken,
         refreshToken,
       },
+      user: {
+        role: userData.role,
+        id_number: userData.id_number,
+      },
     });
   } catch (error) {
     return res.status(500).json({
@@ -153,7 +161,15 @@ exports.login = async (req, res) => {
 };
 
 exports.register = async (req, res) => {
-  const { firstname, lastname, email, role, mobile_number, password, confirmPassword } = req.body;
+  const {
+    firstname,
+    lastname,
+    email,
+    role,
+    mobile_number,
+    password,
+    confirmPassword,
+  } = req.body;
 
   try {
     const hashedPassword = await bcrypt.hash(password, 6);
