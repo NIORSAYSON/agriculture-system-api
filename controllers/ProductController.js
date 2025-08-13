@@ -12,7 +12,7 @@ exports.createProduct = async (req, res) => {
       product: product,
     });
   } catch (error) {
-    res.status(400).json({ message: error.message });
+    return res.status(500).json({ message: "Internal Server Error", error: error.message });
   }
 };
 
