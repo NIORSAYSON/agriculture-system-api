@@ -40,9 +40,7 @@ exports.getUserByIdNumber = async (req, res) => {
       return res.status(400).json({ message: "id_number is required." });
     }
 
-    const user = await DB.user
-      .findOne({ id_number: id_number })
-      .select("-password");
+    const user = await DB.user.findOne({ id_number: id_number }).select("-password");
 
     if (!user) {
       return res.status(404).json({ message: "User not found." });
@@ -50,6 +48,59 @@ exports.getUserByIdNumber = async (req, res) => {
 
     return res.status(200).json({
       message: "User fetched successfully",
+      data: user,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      message: "Internal Server Error",
+      error: error.message,
+    });
+  }
+};
+
+exports.updateUserByIdNumber = async (req, res) => {
+  try {
+    const updatedData = req.body;
+    const { id } = req.params;
+    if (!id) {
+      return res.status(400).json({ message: "Id is required." });
+    }
+
+    const user = await DB.user.findById(id);
+    if (!user) {
+      return res.status(404).json({ message: "User not found." });
+    }
+
+    await DB.user.findByIdAndUpdate(id, { $set: updatedData });
+
+    return res.status(200).json({ 
+      message: "User updated successfully",
+      data: user,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      message: "Internal Server Error",
+      error: error.message,
+    });
+  }
+};
+
+exports.deleteUserById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!id) {
+      return res.status(400).json({ message: "Id is required." });
+    }
+
+    const user = await DB.user.findById(id);
+    if (!user) {
+      return res.status(404).json({ message: "User not found." });
+    }
+
+    await DB.user.findByIdAndDelete(id);
+
+    return res.status(200).json({
+      message: "User deleted successfully",
       data: user,
     });
   } catch (error) {
