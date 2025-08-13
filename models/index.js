@@ -9,6 +9,7 @@ DB.url = process.env.MONGO_URL;
 
 DB.user = require("./User")(mongoose);
 DB.blacklist = require("./Blacklist")(mongoose);
+DB.product = require("./Product")(mongoose);
 DB.category = require("./Category")(mongoose); 
 
 module.exports = DB;
