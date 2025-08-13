@@ -20,7 +20,7 @@ exports.verifyToken = async function (req, res, next) {
       req.tokenType = "firebase";
       return next();
     } catch (error) {
-      return res.status(401).json({ message: "Firebase token invalid or expired." });
+      return res.status(401).json({ message: "Token is invalid or expired." });
     }
   } else {
     // Manual JWT
@@ -35,7 +35,7 @@ exports.verifyToken = async function (req, res, next) {
       req.tokenType = "manual";
       return next();
     } catch {
-      return res.status(401).json({ message: "JWT invalid or expired." });
+      return res.status(401).json({ message: "TOken is invalid or expired." });
     }
   }
 };
