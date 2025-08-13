@@ -25,14 +25,10 @@ function _schema(mongoose) {
         required: true,
       },
       category: {
-        type: String,
-        required: false,
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "category",
+        required: true,
       },
-      // category: {
-      //   type: mongoose.Schema.Types.ObjectId,
-      //   ref: "category",
-      //   required: false,
-      // },
       image: {
         type: String,
         default: "",
@@ -48,8 +44,6 @@ function _schema(mongoose) {
     },
     {
       timestamps: true,
-      toJSON: { virtuals: true },
-      toObject: { virtuals: true },
     }
   );
 }

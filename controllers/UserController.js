@@ -22,6 +22,7 @@ exports.getAllUsers = async (req, res) => {
     return res.status(200).json({
       message: "Users fetched successfully",
       data: users,
+      countUsers: countUser,
       currentPage: pageNumber,
       totalPages: totalPages,
     });

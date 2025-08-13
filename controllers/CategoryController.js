@@ -12,7 +12,7 @@ exports.createCategory = async (req, res) => {
       category: category,
     });
   } catch (error) {
-    return res.status(500).json({ error: error.message });
+    return res.status(500).json({ message: "Internal Server Error", error: error.message });
   }
 };
 
@@ -26,12 +26,10 @@ exports.getCategories = async (req, res) => {
     const categories = await DB.category.find().limit(itemsLimit).skip(skip);
 
     if (!categories || categories.length === 0) {
-      return res.status(404).json({
-        message: "No categories found",
-      });
+      return res.status(404).json({ message: "No categories found" });
     }
 
-    const countCategories = await DB.category.countDocuments();
+    const countCategories = await DB.category.countDocuments(categories);
     const totalPages = Math.ceil(countCategories / itemsLimit);
 
     return res.status(200).json({
@@ -41,7 +39,7 @@ exports.getCategories = async (req, res) => {
       totalPages: totalPages,
     });
   } catch (error) {
-    return res.status(500).json({ error: error.message });
+    return res.status(500).json({ message: "Internal Server Error", error: error.message });
   }
 };
 
@@ -64,7 +62,7 @@ exports.updateCategory = async (req, res) => {
       category: category,
     });
   } catch (error) {
-    return res.status(500).json({ error: error.message });
+    return res.status(500).json({ message: "Internal Server Error", error: error.message });
   }
 };
 
@@ -79,12 +77,13 @@ exports.deleteCategory = async (req, res) => {
       });
     }
 
-    await DB.category.findByIdAndDelete(id);
+    const deletedCategory = await DB.category.findByIdAndDelete(id);
+    
     return res.status(200).json({
       message: "Category deleted successfully",
-      category: category,
+      category: deletedCategory,
     });
   } catch (error) {
-    return res.status(500).json({ error: error.message });
+    return res.status(500).json({ message: "Internal Server Error", error: error.message });
   }
 };
