@@ -4,9 +4,9 @@ const { checkAuth } = require("../middleware/checkAuth");
 
 const router = express.Router();
 
-router.get("/", checkAuth, ProductController.getAllProducts);
+router.get("/", ProductController.getAllProducts);
 
-// router.get("/:id", ProductController.getProductById);
+router.get("/", checkAuth, ProductController.getAllProducts);
 
 router.post("/", checkAuth, ProductController.createProduct);
 
