@@ -12,7 +12,9 @@ exports.createProduct = async (req, res) => {
       product: product,
     });
   } catch (error) {
-    return res.status(500).json({ message: "Internal Server Error", error: error.message });
+    return res
+      .status(500)
+      .json({ message: "Internal Server Error", error: error.message });
   }
 };
 
@@ -32,7 +34,11 @@ exports.getAllProducts = async (req, res) => {
     if (type) condition.type = type;
     if (id) condition._id = id;
 
-    const products = await DB.product.find(condition).populate({ path: "category", select: "name status" }).limit(itemsLimit).skip(skip);
+    const products = await DB.product
+      .find(condition)
+      .populate({ path: "category", select: "name status" })
+      .limit(itemsLimit)
+      .skip(skip);
 
     if (!products || products.length === 0) {
       return res.status(404).json({ message: "No products found" });
@@ -49,7 +55,9 @@ exports.getAllProducts = async (req, res) => {
       totalPages: totalPages,
     });
   } catch (error) {
-    return res.status(500).json({ message: "Internal Server Error", error: error.message });
+    return res
+      .status(500)
+      .json({ message: "Internal Server Error", error: error.message });
   }
 };
 
@@ -63,14 +71,20 @@ exports.updateProduct = async (req, res) => {
       return res.status(404).json({ message: "Product not found" });
     }
 
-    const updatedProduct = await DB.product.findByIdAndUpdate(productId, { $set: newData }, { new: true });
+    const updatedProduct = await DB.product.findByIdAndUpdate(
+      productId,
+      { $set: newData },
+      { new: true }
+    );
 
     return res.status(200).json({
       message: "Product updated successfully",
       product: updatedProduct,
     });
   } catch (error) {
-    return res.status(500).json({ message: "Internal Server Error", error: error.message });
+    return res
+      .status(500)
+      .json({ message: "Internal Server Error", error: error.message });
   }
 };
 
@@ -91,6 +105,8 @@ exports.deleteProduct = async (req, res) => {
       product: deletedProduct,
     });
   } catch (error) {
-    return res.status(500).json({ message: "Internal Server Error", error: error.message });
+    return res
+      .status(500)
+      .json({ message: "Internal Server Error", error: error.message });
   }
 };
