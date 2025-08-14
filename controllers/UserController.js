@@ -3,12 +3,21 @@ const DB = require("../models");
 
 exports.getAllUsers = async (req, res) => {
   try {
-    const { limit, page } = req.query;
+    const { limit, page, status, role, id } = req.query;
     const itemsLimit = Math.max(parseInt(limit) || 10, 1);
     const pageNumber = Math.max(parseInt(page) || 1, 1);
     const skip = (pageNumber - 1) * itemsLimit;
 
-    const users = await DB.user.find().limit(itemsLimit).skip(skip);
+    const condition = {
+      status: "Active",
+      deleted_at: null
+    };
+
+    if (status) condition.status = status;
+    if (role) condition.role = role;
+    if (id) condition._id = id;
+
+    const users = await DB.user.find(condition).limit(itemsLimit).skip(skip);
 
     if (!users || users.length === 0) {
       return res.status(404).json({
@@ -16,7 +25,7 @@ exports.getAllUsers = async (req, res) => {
       });
     }
 
-    const countUser = await DB.user.countDocuments(users);
+    const countUser = await DB.user.countDocuments(condition);
     const totalPages = Math.ceil(countUser / itemsLimit);
 
     return res.status(200).json({
