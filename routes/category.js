@@ -1,14 +1,14 @@
 const express = require("express");
 const router = express.Router();
 const Category = require("../controllers/CategoryController");
-const { verifyToken } = require("../middleware/verifyToken");
+const { checkAuth } = require("../middleware/checkAuth");
 
-router.post("/", verifyToken, Category.createCategory);
+router.post("/", checkAuth, Category.createCategory);
 
-router.get("/", verifyToken, Category.getCategories);
+router.get("/", checkAuth, Category.getCategories);
 
-router.put("/:id", verifyToken, Category.updateCategory);
+router.put("/:id", checkAuth, Category.updateCategory);
 
-router.delete("/:id", verifyToken, Category.deleteCategory);
+router.delete("/:id", checkAuth, Category.deleteCategory);
 
 module.exports = router;
