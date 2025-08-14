@@ -18,18 +18,25 @@ exports.createCategory = async (req, res) => {
 
 exports.getCategories = async (req, res) => {
   try {
-    const { limit, page } = req.query;
+    const { limit, page, status } = req.query;
     const itemsLimit = Math.max(parseInt(limit) || 10, 1);
     const pageNumber = Math.max(parseInt(page) || 1, 1);
     const skip = (pageNumber - 1) * itemsLimit;
 
-    const categories = await DB.category.find().limit(itemsLimit).skip(skip);
+    const condition = {
+      status: "Active",
+      deleted_at: null
+    };
+
+    if (status) condition.status = status;
+
+    const categories = await DB.category.find(condition).limit(itemsLimit).skip(skip);
 
     if (!categories || categories.length === 0) {
       return res.status(404).json({ message: "No categories found" });
     }
 
-    const countCategories = await DB.category.countDocuments(categories);
+    const countCategories = await DB.category.countDocuments(condition);
     const totalPages = Math.ceil(countCategories / itemsLimit);
 
     return res.status(200).json({
