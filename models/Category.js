@@ -22,6 +22,10 @@ function _schema(mongoose) {
         required: true,
         default: "Active",
       },
+      deleted_at: {
+        type: Date,
+        default: null,
+      },
     },
     {
       timestamps: true,

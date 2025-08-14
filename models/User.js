@@ -53,8 +53,12 @@ function _schema(mongoose) {
       },
       store_id: {
         type: String,
-        default: ""
-      }
+        default: "",
+      },
+      deleted_at: {
+        type: Date,
+        default: null,
+      },
     },
     {
       timestamps: true,

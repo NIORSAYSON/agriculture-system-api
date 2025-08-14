@@ -39,7 +39,15 @@ function _schema(mongoose) {
       },
       status: {
         type: String,
+        default: "Active",
+      },
+      type: {
+        type: String,
         default: "Available",
+      },
+      deleted_at: {
+        type: Date,
+        default: null,
       },
     },
     {
