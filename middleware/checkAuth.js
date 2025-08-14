@@ -2,7 +2,7 @@ const jwt = require("jsonwebtoken");
 const admin = require("../firebase");
 const DB = require("../models");
 
-exports.verifyToken = async function (req, res, next) {
+exports.checkAuth = async function (req, res, next) {
   const authHeader = req.headers.authorization;
 
   if (!authHeader || !authHeader.startsWith("Bearer ")) {

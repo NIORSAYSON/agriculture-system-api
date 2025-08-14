@@ -1,11 +1,11 @@
 const express = require("express");
 const router = express.Router();
-const { verifyToken } = require("../middleware/verifyToken");
+const { checkAuth } = require("../middleware/checkAuth");
 const AuthController = require("../controllers/AuthController");
 
-router.post("/google-login", verifyToken, AuthController.googleLogin);
+router.post("/google-login", checkAuth, AuthController.googleLogin);
 
-router.post("/logout", verifyToken, AuthController.logout);
+router.post("/logout", checkAuth, AuthController.logout);
 
 router.post("/login", AuthController.login);
 
