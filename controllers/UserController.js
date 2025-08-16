@@ -3,19 +3,26 @@ const DB = require("../models");
 
 exports.getAllUsers = async (req, res) => {
   try {
-    const { limit, page, status, role, id } = req.query;
+    const { limit, page, status, role, id, search } = req.query;
     const itemsLimit = Math.max(parseInt(limit) || 10, 1);
     const pageNumber = Math.max(parseInt(page) || 1, 1);
     const skip = (pageNumber - 1) * itemsLimit;
 
     const condition = {
       status: "Active",
-      deleted_at: null
+      deleted_at: null,
     };
 
     if (status) condition.status = status;
     if (role) condition.role = role;
     if (id) condition._id = id;
+    if (search) {
+      condition.$or = [
+        { firstname: { $regex: search.toLowerCase(), $options: "i" } },
+        { lastname: { $regex: search.toLowerCase(), $options: "i" } },
+        { id_number: { $regex: search.toUpperCase(), $options: "i" } },
+      ];
+    }
 
     const users = await DB.user.find(condition).limit(itemsLimit).skip(skip);
 
@@ -50,7 +57,9 @@ exports.getUserByIdNumber = async (req, res) => {
       return res.status(400).json({ message: "id_number is required." });
     }
 
-    const user = await DB.user.findOne({ id_number: id_number }).select("-password");
+    const user = await DB.user
+      .findOne({ id_number: id_number })
+      .select("-password");
 
     if (!user) {
       return res.status(404).json({ message: "User not found." });
@@ -83,7 +92,7 @@ exports.updateUserByIdNumber = async (req, res) => {
 
     await DB.user.findByIdAndUpdate(id, { $set: updatedData });
 
-    return res.status(200).json({ 
+    return res.status(200).json({
       message: "User updated successfully",
       data: user,
     });

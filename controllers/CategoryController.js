@@ -18,7 +18,7 @@ exports.createCategory = async (req, res) => {
 
 exports.getCategories = async (req, res) => {
   try {
-    const { limit, page, status } = req.query;
+    const { limit, page, status, search } = req.query;
     const itemsLimit = Math.max(parseInt(limit) || 10, 1);
     const pageNumber = Math.max(parseInt(page) || 1, 1);
     const skip = (pageNumber - 1) * itemsLimit;
@@ -29,6 +29,11 @@ exports.getCategories = async (req, res) => {
     };
 
     if (status) condition.status = status;
+    if (search) {
+      condition.$or = [
+        { name: { $regex: search.toLowerCase(), $options: "i" } },
+      ];
+    }
 
     const categories = await DB.category.find(condition).limit(itemsLimit).skip(skip);
 

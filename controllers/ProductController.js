@@ -20,7 +20,7 @@ exports.createProduct = async (req, res) => {
 
 exports.getAllProducts = async (req, res) => {
   try {
-    const { limit, page, status, type, id } = req.query;
+    const { limit, page, status, type, id, search } = req.query;
     const itemsLimit = Math.max(parseInt(limit) || 10, 1);
     const pageNumber = Math.max(parseInt(page) || 1, 1);
     const skip = (pageNumber - 1) * itemsLimit;
@@ -33,6 +33,11 @@ exports.getAllProducts = async (req, res) => {
     if (status) condition.status = status;
     if (type) condition.type = type;
     if (id) condition._id = id;
+    if (search) {
+      condition.$or = [
+        { name: { $regex: search.toLowerCase(), $options: "i" } },
+      ];
+    }
 
     const products = await DB.product
       .find(condition)

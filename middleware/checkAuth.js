@@ -35,7 +35,7 @@ exports.checkAuth = async function (req, res, next) {
       req.tokenType = "manual";
       return next();
     } catch {
-      return res.status(401).json({ message: "TOken is invalid or expired." });
+      return res.status(401).json({ message: "Token is invalid or expired." });
     }
   }
 };
