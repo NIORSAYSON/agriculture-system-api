@@ -62,8 +62,6 @@ function _schema(mongoose) {
     },
     {
       timestamps: true,
-      toJSON: { virtuals: true },
-      toObject: { virtuals: true },
     }
   );
 }

@@ -33,11 +33,12 @@ exports.googleLogin = async (req, res) => {
     }
 
     const userData = {
-      role: req.user.role,
-      id_number: req.user.id_number,
-      firstname: req.user.firstname,
-      lastname: req.user.lastname,
-      email: req.user.email,
+      id: user._id,
+      role: user.role,
+      id_number: user.id_number,
+      firstname: user.firstname,
+      lastname: user.lastname,
+      email: user.email,
     };
 
     const refreshToken = jwtHelper.generateToken("refresh", userData);

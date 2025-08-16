@@ -1,0 +1,90 @@
+const DB = require("../models");
+
+exports.addToCart = async (req, res) => {
+  try {
+    const { id, id_number } = req.user;
+    const { products } = req.body;
+
+    if (!products || !Array.isArray(products)) {
+      return res.status(400).send({ message: "Invalid request body" });
+    }
+
+    const user = await DB.user.findOne({ id_number });
+
+    // Find if cart exists for this user
+    let cart = await DB.cart.findOne({ user: user._id });
+
+    if (!cart) {
+      // Create new cart
+      cart = new DB.cart({
+        id_number,
+        user: user._id,
+        products: [],
+        total: 0,
+      });
+    }
+
+    // Update products in the cart
+    products.forEach((newItem) => {
+      const existingItem = cart.products.find(
+        (item) => item.product.toString() === newItem.product
+      );
+
+      if (existingItem) {
+        existingItem.quantity += newItem.quantity;
+      } else {
+        cart.products.push({
+          product: newItem.product,
+          quantity: newItem.quantity,
+        });
+      }
+    });
+
+    let total = 0;
+    for (const item of cart.products) {
+      const productDoc = await DB.product.findById(item.product);
+      if (productDoc) {
+        total += productDoc.price * item.quantity;
+      }
+    }
+    cart.total = total;
+
+    await cart.save();
+
+    return res.status(201).send({
+      message: "Product added to cart successfully",
+      cart: cart,
+    });
+  } catch (error) {
+    console.error("Error adding to cart:", error);
+    return res.status(500).send({
+      message: "Internal server error",
+      error: error.message,
+    });
+  }
+};
+
+exports.getCart = async (req, res) => {
+  try {
+    const { id } = req.user;
+    // const id = req.params.id;
+
+    const user = await DB.user.findOne({ id });
+    if (!user) {
+      return res.status(404).send({ message: "User not found" });
+    }
+
+    const cart = await DB.cart
+      .findOne({ user: user._id })
+      .populate({ path: "products.product", select: "name price" })
+      .populate({ path: "user", select: "firstname lastname" });
+    if (!cart) {
+      return res.status(404).send({ message: "Cart not found" });
+    }
+
+    return res.status(200).send({
+      message: "Cart retrieved successfully",
+      cart: cart,
+    });
+  } catch (error) {}
+};

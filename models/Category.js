@@ -11,7 +11,6 @@ module.exports = (mongoose) => {
 
 function _schema(mongoose) {
   return mongoose.Schema(
-    /*<-------------------BASIC INFORMATION------------------->*/
     {
       name: {
         type: String,
