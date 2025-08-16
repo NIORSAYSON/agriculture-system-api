@@ -66,10 +66,11 @@ exports.addToCart = async (req, res) => {
 
 exports.getCart = async (req, res) => {
   try {
-    const { id } = req.user;
+    const { id_number } = req.user;
     // const id = req.params.id;
 
-    const user = await DB.user.findOne({ id });
+
+    const user = await DB.user.findOne({ id_number });
     if (!user) {
       return res.status(404).send({ message: "User not found" });
     }
