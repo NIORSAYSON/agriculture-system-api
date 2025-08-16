@@ -88,3 +88,60 @@ exports.getCart = async (req, res) => {
     });
   } catch (error) {}
 };
+
+exports.deleteFromCart = async (req, res) => {
+  try {
+    const { id_number } = req.user;
+    const { productIds } = req.body;
+
+    if (!productIds || productIds.length === 0) {
+      return res.status(400).send({ message: "Product ID array is required" });
+    }
+
+    // Find user
+    const user = await DB.user.findOne({ id_number });
+    if (!user) {
+      return res.status(404).send({ message: "User not found" });
+    }
+
+    // Find cart
+    let cart = await DB.cart.findOne({ user: user._id });
+    if (!cart) {
+      return res.status(404).send({ message: "Cart not found" });
+    }
+
+    // Remove all products in the array
+    const initialLength = cart.products.length;
+    cart.products = cart.products.filter(
+      (item) => !productIds.includes(item.product.toString())
+    );
+
+    if (cart.products.length === initialLength) {
+      return res
+        .status(404)
+        .send({ message: "No matching products found in cart" });
+    }
+
+    // Recalculate total
+    let total = 0;
+    for (const item of cart.products) {
+      const productDoc = await DB.product.findById(item.product);
+      if (productDoc) {
+        total += productDoc.price * item.quantity;
+      }
+    }
+    cart.total = total;
+
+    await cart.save();
+
+    return res.status(200).send({
+      message: "Products removed from cart successfully",
+      cart: cart,
+    });
+  } catch (error) {
+    return res.status(500).send({
+      message: "Internal server error",
+      error: error.message,
+    });
+  }
+};
