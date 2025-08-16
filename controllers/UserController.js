@@ -153,11 +153,17 @@ exports.getAddress = async (req, res) => {
 
 exports.addAddresses = async (req, res) => {
   try {
-    const { id_number } = req.user;
+    const { id_number, role } = req.user;
     const newAddress = req.body;
 
     if (!newAddress || !newAddress.type) {
       return res.status(400).json({ message: "Address type is required." });
+    }
+
+    if (role === "seller") {
+      newAddress.category = "Seller";
+    } else {
+      newAddress.category = "Shipping";
     }
 
     const user = await DB.user.findOne({ id_number });
@@ -203,7 +209,7 @@ exports.updateAddresses = async (req, res) => {
 
     return res.status(200).json({
       message: "User Address updated successfully",
-      data: address, 
+      data: address,
     });
   } catch (error) {
     return res.status(500).json({
