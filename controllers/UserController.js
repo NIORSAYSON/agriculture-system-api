@@ -54,7 +54,7 @@ exports.getUserByIdNumber = async (req, res) => {
   try {
     const { id_number } = req.params;
     if (!id_number) {
-      return res.status(400).json({ message: "id_number is required." });
+      return res.status(400).json({ message: "ID is required." });
     }
 
     const user = await DB.user
@@ -121,6 +121,123 @@ exports.deleteUserById = async (req, res) => {
     return res.status(200).json({
       message: "User deleted successfully",
       data: user,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      message: "Internal Server Error",
+      error: error.message,
+    });
+  }
+};
+
+exports.getAddress = async (req, res) => {
+  try {
+    const { id_number } = req.user;
+
+    const user = await DB.user.findOne({ id_number });
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    return res.status(200).json({
+      message: "Addresses fetched successfully",
+      data: user.address,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      message: "Internal Server Error",
+      error: error.message,
+    });
+  }
+};
+
+exports.addAddresses = async (req, res) => {
+  try {
+    const { id_number } = req.user;
+    const newAddress = req.body;
+
+    if (!newAddress || !newAddress.type) {
+      return res.status(400).json({ message: "Address type is required." });
+    }
+
+    const user = await DB.user.findOne({ id_number });
+    if (!user) {
+      return res.status(404).json({ message: "User not found." });
+    }
+
+    user.address.push(newAddress);
+    await user.save();
+
+    return res.status(201).json({
+      message: "Address added successfully",
+      data: user,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      message: "Internal Server Error",
+      error: error.message,
+    });
+  }
+};
+
+exports.updateAddresses = async (req, res) => {
+  try {
+    const { id_number } = req.user;
+    const { addressId } = req.params;
+    const updatedData = req.body;
+
+    const user = await DB.user.findOne({ id_number });
+    if (!user) {
+      return res.status(404).json({ message: "User not found." });
+    }
+
+    // Find address subdocument by ID
+    const address = user.address.id(addressId);
+    if (!address) {
+      return res.status(404).json({ message: "Address not found." });
+    }
+
+    address.set(updatedData);
+
+    await user.save();
+
+    return res.status(200).json({
+      message: "User Address updated successfully",
+      data: address, 
+    });
+  } catch (error) {
+    return res.status(500).json({
+      message: "Internal Server Error",
+      error: error.message,
+    });
+  }
+};
+
+exports.deleteAddress = async (req, res) => {
+  try {
+    const { id_number } = req.user;
+    const { addressId } = req.params;
+
+    const user = await DB.user.findOneAndUpdate(
+      { id_number },
+      { $pull: { address: { _id: addressId } } },
+      { new: true }
+    );
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found." });
+    }
+
+    // If no addresses left, return error
+    if (user.address.length === 0) {
+      return res
+        .status(400)
+        .json({ message: "No more addresses left to delete." });
+    }
+
+    return res.status(200).json({
+      message: "Address deleted successfully",
+      data: user.address,
     });
   } catch (error) {
     return res.status(500).json({

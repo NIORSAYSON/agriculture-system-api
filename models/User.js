@@ -47,6 +47,21 @@ function _schema(mongoose) {
         type: String,
         default: "",
       },
+      address: [
+        {
+          type: { type: String, required: true },
+          category: {
+            type: String,
+            enum: ["Shipping", "Seller"],
+            required: true,
+          },
+          street: { type: String },
+          city: { type: String },
+          province: { type: String },
+          zipcode: { type: String },
+          country: { type: String, default: "Philippines" },
+        },
+      ],
       password: {
         type: String,
         required: true,
