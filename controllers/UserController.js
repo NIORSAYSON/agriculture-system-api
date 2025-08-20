@@ -10,7 +10,6 @@ exports.getAllUsers = async (req, res) => {
     const skip = (pageNumber - 1) * itemsLimit;
 
     const condition = {
-      status: "Active",
       deleted_at: null,
     };
 
