@@ -67,8 +67,7 @@ exports.addToCart = async (req, res) => {
 exports.getCart = async (req, res) => {
   try {
     const { id_number } = req.user;
-    // const id = req.params.id;
-
+    // const id = req.params.id
 
     const user = await DB.user.findOne({ id_number });
     if (!user) {
