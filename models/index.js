@@ -12,5 +12,6 @@ DB.blacklist = require("./Blacklist")(mongoose);
 DB.product = require("./Product")(mongoose);
 DB.category = require("./Category")(mongoose); 
 DB.cart = require("./Cart")(mongoose);
+DB.order = require("./Order")(mongoose);
 
 module.exports = DB;
