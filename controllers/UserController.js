@@ -219,6 +219,14 @@ exports.updateAddresses = async (req, res) => {
       return res.status(404).json({ message: "Address not found." });
     }
 
+    // If isDefault is being set to true, set all others to false
+    if (updatedData.isDefault === true) {
+      user.address.forEach((addr) => {
+        addr.isDefault = false;
+      });
+      address.isDefault = true;
+    }
+
     address.set(updatedData);
 
     await user.save();
