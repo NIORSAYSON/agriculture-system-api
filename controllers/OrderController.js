@@ -1,6 +1,6 @@
 const DB = require("../models");
 
-exports.checkout = async (req, res) => {
+exports.placeOrder = async (req, res) => {
   try {
     const { id_number } = req.user;
     let { addressId } = req.body || {};
@@ -57,9 +57,11 @@ exports.checkout = async (req, res) => {
       user: cart.user,
       products: cart.products,
       totalAmount: cart.total,
-      status: "Pending",
+      status: "Processing",
       shippingAddress,
     });
+
+    await DB.cart.findByIdAndUpdate(cart._id, { products: [], total: 0 });
 
     return res.status(201).json({
       message: "Order placed successfully",
@@ -69,49 +71,6 @@ exports.checkout = async (req, res) => {
     return res
       .status(500)
       .json({ message: "Internal server error", error: error.message });
-  }
-};
-
-exports.placeOrder = async (req, res) => {
-  try {
-    const { id_number } = req.user;
-    const { id } = req.params;
-
-    // Find the order and populate products and user
-    const order = await DB.order
-      .findOne({ _id: id, id_number })
-      .populate(
-        "products.product",
-        "_id name price description category status type image"
-      )
-      .populate("user", "firstname lastname mobile_number");
-
-    if (!order) {
-      return res.status(404).json({ message: "Order not found" });
-    }
-
-    // Check if already placed
-    if (order.status === "Processing") {
-      return res.status(400).json({ message: "Order is already placed" });
-    }
-
-    order.status = "Processing";
-    await order.save();
-
-    const cart = await DB.cart.findOne({ id_number });
-    if (cart) {
-      await DB.cart.findByIdAndUpdate(cart._id, { products: [], total: 0 });
-    }
-
-    return res.status(200).json({
-      message: "Order placed successfully",
-      order,
-    });
-  } catch (error) {
-    return res.status(500).json({
-      message: "Internal server error",
-      error: error.message,
-    });
   }
 };
 

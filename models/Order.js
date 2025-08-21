@@ -42,8 +42,8 @@ function _schema(mongoose) {
       },
       status: {
         type: String,
-        enum: ["Pending", "In Transit", "Delivered", "Processing"],
-        default: "Pending",
+        enum: ["In Transit", "Delivered", "Processing"],
+        default: "Processing",
       },
       shippingAddress: {
         type: Object,
@@ -53,7 +53,6 @@ function _schema(mongoose) {
         method: {
           type: String,
           enum: ["COD", "GCASH"],
-          // required: true,
         },
         status: {
           type: String,
