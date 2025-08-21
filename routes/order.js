@@ -3,8 +3,8 @@ const router = express.Router();
 const OrderController = require("../controllers/OrderController");
 const { checkAuth } = require("../middleware/checkAuth");
 
-router.post("/placeOrder", checkAuth, OrderController.placeOrder);
+router.get("/", checkAuth, OrderController.getOrders);
 
-router.patch("/back/:id", checkAuth, OrderController.backOrder);
+router.post("/placeOrder", checkAuth, OrderController.placeOrder);
 
 module.exports = router;

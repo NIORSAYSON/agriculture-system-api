@@ -59,6 +59,7 @@ exports.placeOrder = async (req, res) => {
       totalAmount: cart.total,
       status: "Processing",
       shippingAddress,
+      date: new Date(),
     });
 
     await DB.cart.findByIdAndUpdate(cart._id, { products: [], total: 0 });
@@ -74,28 +75,39 @@ exports.placeOrder = async (req, res) => {
   }
 };
 
-exports.backOrder = async (req, res) => {
+exports.getOrders = async (req, res) => {
   try {
     const { id_number } = req.user;
-    const { id } = req.params;
+    const { limit, page, status } = req.query;
+    const itemsLimit = Math.max(parseInt(limit) || 10, 1);
+    const pageNumber = Math.max(parseInt(page) || 1, 1);
+    const skip = (pageNumber - 1) * itemsLimit;
 
-    // Find the order
-    const order = await DB.order.findOne({ _id: id, id_number });
-    if (!order) {
-      return res.status(404).json({ message: "Order not found" });
+    const user = await DB.user.findOne({ id_number });
+
+    const condition = {
+      user: user._id,
+      deleted_at: null,
+    };
+
+    if (status) condition.status = status;
+
+    // Find all orders for the user
+    const orders = await DB.order.find(condition).skip(skip).limit(itemsLimit);
+
+    if (!orders || orders.length === 0) {
+      return res.status(404).json({ message: "No orders found" });
     }
 
-    // Check if already cancelled
-    if (order.status === "Cancelled") {
-      return res.status(400).json({ message: "Order is already cancelled" });
-    }
-
-    order.deleted_at = new Date();
-    await order.save();
+    const countOrders = await DB.order.countDocuments(condition);
+    const totalPages = Math.ceil(countOrders / itemsLimit);
 
     return res.status(200).json({
-      message: "Order cancelled successfully",
-      order,
+      message: "Orders retrieved successfully",
+      orders,
+      countOrders: countOrders,
+      currentPage: pageNumber,
+      totalPages: totalPages,
     });
   } catch (error) {
     return res.status(500).json({

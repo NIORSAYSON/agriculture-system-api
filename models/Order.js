@@ -69,6 +69,9 @@ function _schema(mongoose) {
         type: String,
         default: "",
       },
+      date: {
+        type: Date,
+      },
       deleted_at: {
         type: Date,
         default: null,
