@@ -53,6 +53,7 @@ function _schema(mongoose) {
         method: {
           type: String,
           enum: ["COD", "GCASH"],
+          default: "COD",
         },
         status: {
           type: String,
