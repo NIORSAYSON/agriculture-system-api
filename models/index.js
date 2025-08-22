@@ -10,7 +10,10 @@ DB.url = process.env.MONGO_URL;
 DB.user = require("./User")(mongoose);
 DB.blacklist = require("./Blacklist")(mongoose);
 DB.product = require("./Product")(mongoose);
-DB.category = require("./Category")(mongoose); 
+DB.category = require("./Category")(mongoose);
 DB.cart = require("./Cart")(mongoose);
+
+// chat
+DB.message = require("./Message")(mongoose);
 
 module.exports = DB;
