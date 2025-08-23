@@ -10,7 +10,7 @@ const cookieParser = require("cookie-parser");
 const moment = require("moment");
 const momentTimezone = require("moment-timezone");
 const socketIO = require("socket.io");
-const chatSocket = require("./socket/chatSocket");
+const { chatSocket } = require("./socket/chatSocket");
 const http = require("http");
 
 const DB = require("./models");
@@ -47,6 +47,7 @@ app.use(bodyParser.json());
 
 // socket
 chatSocket(io);
+app.set("io", io);
 
 // connectToMongoDB();
 // indexRoutes(app);

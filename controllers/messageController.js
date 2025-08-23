@@ -1,6 +1,7 @@
 const { Db } = require("mongodb");
 const DB = require("../models");
 const Message = require("../models/Message");
+const { connectedUsers } = require("../socket/chatSocket");
 
 exports.getConversationMessages = async (req, res) => {
   const { id_number } = req.user;
@@ -43,64 +44,10 @@ exports.getConversationMessages = async (req, res) => {
   }
 };
 
-// exports.getUserConversations = async (req, res) => {
-//   const { userId } = req.body;
-//   try {
-//     // Find all messages where the user is either sender or receiver
-//     const messages = await Message.find({
-//       $or: [{ senderId: userId }, { receiverId: userId }],
-//     }).sort({ timestamp: -1 });
-
-//     // const user = await DB.user
-//     //   .findOne({ _id: userId })
-//     //   .select("firstname lastname");
-//     // console.log("User:", user);
-
-//     // Build a set of unique conversation partners
-//     const conversations = {};
-//     messages.forEach(async (msg) => {
-//       const otherUser = msg.senderId === userId ? msg.receiverId : msg.senderId;
-//       if (!conversations[otherUser]) {
-//         conversations[otherUser] = [];
-//       }
-//       // Only keep the latest message per conversation
-//       if (
-//         conversations[otherUser].length === 0 ||
-//         msg.timestamp > conversations[otherUser][0].timestamp
-//       ) {
-//         conversations[otherUser][0] = msg;
-//       }
-//     });
-
-//     // Format as array of conversations
-//     const conversationList = Object.keys(conversations).map((partnerId) => ({
-//           const user = await DB.user
-//       .findOne({ _id: userId })
-//       .select("firstname lastname");
-//       partnerId,
-//       messages: conversations[partnerId].sort(
-//         (a, b) => b.timestamp - a.timestamp
-//       ),
-//     }));
-
-//     res.status(200).json({
-//       success: "Ok",
-//       conversations: conversationList,
-//     });
-//   } catch (err) {
-//     res.status(500).json({ error: "Failed to fetch conversations" });
-//   }
-// };
-
 exports.getUserConversations = async (req, res) => {
-  // const { id_number } = req.user;
   const page = parseInt(req.query.page) || 1;
   const limit = parseInt(req.query.limit) || 10;
   const skip = (page - 1) * limit;
-
-  // const user = await DB.user.findOne({ _id: id_number });
-  // const userId = user?._id;
-  // console.log("User:", userId);
   const { id_number } = req.user;
 
   const user = await DB.user.findOne({ id_number });
@@ -171,6 +118,7 @@ exports.sendMessage = async (req, res) => {
   const receiverId = req.body.receiverId;
   const content = req.body.content;
   const user = await DB.user.findOne({ id_number });
+  const io = req.app.get("io");
 
   try {
     const message = new Message({
@@ -180,11 +128,79 @@ exports.sendMessage = async (req, res) => {
     });
     await message.save();
 
+    const receiverSocketId = connectedUsers.get(receiverId);
+    if (receiverSocketId) {
+      io.to(receiverSocketId).emit("refreshConversation", { refresh: true });
+      console.log(`Notified ${receiverId} to refresh`);
+    }
+
     res.status(200).json({
       success: "Ok",
     });
   } catch (err) {
     console.log(err);
     res.status(500).json({ error: "Failed to send message" });
+  }
+};
+
+// for new message
+exports.getUserToMessage = async (req, res) => {
+  const { id_number } = req.user;
+  const user = await DB.user.findOne({ id_number });
+  const search = req.query.search || "";
+  const page = parseInt(req.query.page) || 1;
+  const limit = parseInt(req.query.limit) || 10;
+  const skip = (page - 1) * limit;
+
+  try {
+    const userId = String(user._id);
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Build search query for users
+    const searchQuery = {
+      _id: { $ne: user._id },
+    };
+    if (search && search.trim() !== "") {
+      searchQuery.$or = [
+        { firstname: { $regex: search, $options: "i" } },
+        { lastname: { $regex: search, $options: "i" } },
+      ];
+    }
+
+    const allUsers = await DB.user
+      .find(searchQuery)
+      .select("firstname lastname _id");
+    const messages = await Message.find({
+      $or: [{ senderId: userId }, { receiverId: userId }],
+    }).select("senderId receiverId");
+
+    const conversedUserIds = new Set();
+    messages.forEach((msg) => {
+      if (msg.senderId.toString() !== userId)
+        conversedUserIds.add(msg.senderId.toString());
+      if (msg.receiverId.toString() !== userId)
+        conversedUserIds.add(msg.receiverId.toString());
+    });
+
+    const usersWithoutConversation = allUsers.filter(
+      (u) => !conversedUserIds.has(u._id.toString())
+    );
+
+    const total = usersWithoutConversation.length;
+    const paginatedUsers = usersWithoutConversation.slice(skip, skip + limit);
+
+    res.status(200).json({
+      success: "Ok",
+      users: paginatedUsers,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to fetch conversations" });
   }
 };
