@@ -60,6 +60,7 @@ function _schema(mongoose) {
           province: { type: String },
           zipcode: { type: String },
           country: { type: String, default: "Philippines" },
+          isDefault: { type: Boolean, default: false },
         },
       ],
       password: {

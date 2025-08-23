@@ -1,5 +1,6 @@
 const express = require("express");
 const DB = require("../models");
+const bcrypt = require("bcrypt");
 
 exports.getAllUsers = async (req, res) => {
   try {
@@ -9,7 +10,6 @@ exports.getAllUsers = async (req, res) => {
     const skip = (pageNumber - 1) * itemsLimit;
 
     const condition = {
-      status: "Active",
       deleted_at: null,
     };
 
@@ -79,18 +79,34 @@ exports.getUserByIdNumber = async (req, res) => {
 
 exports.updateUserByIdNumber = async (req, res) => {
   try {
-    const updatedData = req.body;
+    const updatedData = { ...req.body };
     const { id } = req.params;
     if (!id) {
       return res.status(400).json({ message: "Id is required." });
     }
 
-    const user = await DB.user.findById(id);
+    if (updatedData.password) {
+      if (!updatedData.confirmPassword) {
+        return res
+          .status(400)
+          .json({ message: "Confirm Password is required." });
+      }
+      if (updatedData.password !== updatedData.confirmPassword) {
+        return res.status(400).json({ message: "Passwords do not match." });
+      }
+      const salt = await bcrypt.genSalt(10);
+      updatedData.password = await bcrypt.hash(updatedData.password, salt);
+      delete updatedData.confirmPassword;
+    }
+
+    const user = await DB.user.findByIdAndUpdate(
+      id,
+      { $set: updatedData },
+      { new: true }
+    );
     if (!user) {
       return res.status(404).json({ message: "User not found." });
     }
-
-    await DB.user.findByIdAndUpdate(id, { $set: updatedData });
 
     return res.status(200).json({
       message: "User updated successfully",
@@ -201,6 +217,14 @@ exports.updateAddresses = async (req, res) => {
     const address = user.address.id(addressId);
     if (!address) {
       return res.status(404).json({ message: "Address not found." });
+    }
+
+    // If isDefault is being set to true, set all others to false
+    if (updatedData.isDefault === true) {
+      user.address.forEach((addr) => {
+        addr.isDefault = false;
+      });
+      address.isDefault = true;
     }
 
     address.set(updatedData);

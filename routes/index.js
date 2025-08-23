@@ -9,6 +9,7 @@ const initRoutes = (app) => {
   router.use("/category", require("./category"));
   router.use("/cart", require("./cart"));
   router.use("/messages", require("./message"));
+  router.use("/order", require("./order"));
 
   router.get("/", (req, res) => {
     return res.json({
