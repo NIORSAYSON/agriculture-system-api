@@ -49,6 +49,7 @@ exports.getUserConversations = async (req, res) => {
   const limit = parseInt(req.query.limit) || 10;
   const skip = (page - 1) * limit;
   const { id_number } = req.user;
+  const io = req.app.get("io");
 
   const user = await DB.user.findOne({ id_number });
 
@@ -87,18 +88,30 @@ exports.getUserConversations = async (req, res) => {
         const partner = await DB.user
           .findOne({ _id: partnerId })
           .select("firstname lastname");
+        const sortedMessages = conversations[partnerId].sort(
+          (a, b) => b.timestamp - a.timestamp
+        );
+        const lastMessage = sortedMessages[0];
+        let yourTurn = false;
+        if (lastMessage && lastMessage.receiverId === userId) {
+          yourTurn = true;
+        }
         return {
           otherUser: {
             id: partnerId,
             firstname: partner?.firstname || "",
             lastname: partner?.lastname || "",
           },
-          messages: conversations[partnerId].sort(
-            (a, b) => b.timestamp - a.timestamp
-          ),
+          messages: sortedMessages,
+          yourTurn: yourTurn ? true : false,
         };
       })
     );
+
+    const receiverSocketId = connectedUsers.get(userId);
+    if (receiverSocketId) {
+      io.to(receiverSocketId).emit("refreshCount", { refresh: true });
+    }
 
     res.status(200).json({
       success: "Ok",
@@ -163,6 +176,13 @@ exports.getUserToMessage = async (req, res) => {
     const searchQuery = {
       _id: { $ne: user._id },
     };
+
+    if (["user", "buyer"].includes(user.role)) {
+      searchQuery.role = "seller";
+    } else if (user.role === "seller") {
+      searchQuery.role = { $in: ["user", "buyer"] };
+    }
+
     if (search && search.trim() !== "") {
       searchQuery.$or = [
         { firstname: { $regex: search, $options: "i" } },
@@ -202,5 +222,40 @@ exports.getUserToMessage = async (req, res) => {
     });
   } catch (err) {
     res.status(500).json({ error: "Failed to fetch conversations" });
+  }
+};
+
+exports.countYourTurn = async (req, res) => {
+  const { id_number } = req.user;
+  const user = await DB.user.findOne({ id_number });
+  const userId = String(user._id);
+
+  try {
+    // Find all messages involving the user, sorted by timestamp descending
+    const messages = await Message.find({
+      $or: [{ senderId: userId }, { receiverId: userId }],
+    }).sort({ timestamp: -1 });
+
+    // Group messages by conversation partner
+    const lastMessages = {};
+    messages.forEach((msg) => {
+      const otherUser = msg.senderId === userId ? msg.receiverId : msg.senderId;
+      // Only keep the latest message per conversation
+      if (!lastMessages[otherUser]) {
+        lastMessages[otherUser] = msg;
+      }
+    });
+
+    // Count conversations where the last message was sent to the user
+    const yourTurnCount = Object.values(lastMessages).filter(
+      (msg) => msg.receiverId === userId
+    ).length;
+
+    res.status(200).json({
+      success: "Ok",
+      yourTurnCount,
+    });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to count your turn" });
   }
 };

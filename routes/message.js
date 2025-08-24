@@ -8,6 +8,7 @@ const { checkAuth } = require("../middleware/checkAuth");
 router.get("/conversations", checkAuth, messageController.getUserConversations);
 router.post("/send", checkAuth, messageController.sendMessage);
 router.get("/usersLists", checkAuth, messageController.getUserToMessage);
+router.get("/yourTurnCount", checkAuth, messageController.countYourTurn);
 router.get("/:user2", checkAuth, messageController.getConversationMessages);
 
 module.exports = router;
