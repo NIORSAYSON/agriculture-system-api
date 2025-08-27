@@ -10,6 +10,7 @@ const initRoutes = (app) => {
   router.use("/cart", require("./cart"));
   router.use("/messages", require("./message"));
   router.use("/order", require("./order"));
+  router.use("/reviews", require("./reviews"));
 
   router.get("/", (req, res) => {
     return res.json({
