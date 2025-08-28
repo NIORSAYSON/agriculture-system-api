@@ -13,6 +13,7 @@ DB.product = require("./Product")(mongoose);
 DB.category = require("./Category")(mongoose);
 DB.cart = require("./Cart")(mongoose);
 DB.order = require("./Order")(mongoose);
+DB.notification = require("./Notification")(mongoose);
 
 // chat
 DB.message = require("./Message")(mongoose);

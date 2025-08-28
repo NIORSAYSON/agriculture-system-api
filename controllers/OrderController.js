@@ -5,15 +5,15 @@ exports.placeOrder = async (req, res) => {
     const { id_number } = req.user;
     let { addressId } = req.body || {};
 
+    // --- Find user ---
     const user = await DB.user.findOne({ id_number });
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
 
-    // Determine shippingAddress
+    // --- Determine shippingAddress ---
     let shippingAddress;
     if (addressId) {
-      // Use specific address
       const selectedAddress = user.address.find(
         (addr) => addr._id.toString() === addressId
       );
@@ -22,14 +22,12 @@ exports.placeOrder = async (req, res) => {
       }
       shippingAddress = selectedAddress;
     } else {
-      // If no addressId, use the default one
       const defaultAddress = user.address.find(
         (addr) => addr.isDefault === true
       );
       if (defaultAddress) {
         shippingAddress = defaultAddress;
       } else if (user.address.length > 0) {
-        // fallback: use first address if no default set
         shippingAddress = user.address[0];
       } else {
         return res
@@ -38,12 +36,12 @@ exports.placeOrder = async (req, res) => {
       }
     }
 
-    // Find the user's cart
+    // --- Find the user's cart ---
     const cart = await DB.cart
       .findOne({ id_number })
       .populate(
         "products.product",
-        "_id name price description category status type image"
+        "_id name price description category status type image seller_id"
       )
       .populate("user", "firstname lastname mobile_number");
 
@@ -51,7 +49,11 @@ exports.placeOrder = async (req, res) => {
       return res.status(404).json({ message: "Cart not found" });
     }
 
-    // Create new order
+    if (cart.products.length === 0) {
+      return res.status(400).json({ message: "Cart is empty" });
+    }
+
+    // --- Create new order ---
     const newOrder = await DB.order.create({
       id_number: cart.id_number,
       user: cart.user,
@@ -62,6 +64,44 @@ exports.placeOrder = async (req, res) => {
       date: new Date(),
     });
 
+    // --- Group products per seller ---
+    const sellerProductsMap = {};
+    cart.products.forEach((p) => {
+      if (p.product && p.product.seller_id) {
+        const sellerId = p.product.seller_id.toString();
+        if (!sellerProductsMap[sellerId]) {
+          sellerProductsMap[sellerId] = [];
+        }
+        sellerProductsMap[sellerId].push(p.product);
+      } else {
+        console.warn("Product missing seller_id:", p.product?._id || p);
+      }
+    });
+
+    // --- Create notifications + emit realtime event ---
+    for (const [sellerId, products] of Object.entries(sellerProductsMap)) {
+      const productNames = products.map((p) => p.name);
+      const productIds = products.map((p) => p._id);
+
+      const message = `📢 ${cart.user.firstname} ${
+        cart.user.lastname
+      } ordered: ${productNames.join(", ")}`;
+
+      const notif = await DB.notification.create({
+        seller_id: sellerId,
+        user: cart.user._id,
+        orderId: newOrder._id,
+        products: productIds,
+        message,
+        isRead: false,
+        date: new Date(),
+      });
+
+      global.io.to(`seller:${sellerId}`).emit("newOrderNotification", notif);
+      console.log(`📢 Notified seller ${sellerId} via room seller:${sellerId}`);
+    }
+
+    // --- Clear cart after order ---
     await DB.cart.findByIdAndUpdate(cart._id, { products: [], total: 0 });
 
     return res.status(201).json({
@@ -69,9 +109,11 @@ exports.placeOrder = async (req, res) => {
       order: newOrder,
     });
   } catch (error) {
-    return res
-      .status(500)
-      .json({ message: "Internal server error", error: error.message });
+    console.error(error);
+    return res.status(500).json({
+      message: "Internal server error",
+      error: error.message,
+    });
   }
 };
 

@@ -45,6 +45,11 @@ function _schema(mongoose) {
         type: String,
         default: "Available",
       },
+      seller_id: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "user",
+        // required: true,
+      },
       deleted_at: {
         type: Date,
         default: null,

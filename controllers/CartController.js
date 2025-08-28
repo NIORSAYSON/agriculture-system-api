@@ -76,7 +76,7 @@ exports.getCart = async (req, res) => {
 
     const cart = await DB.cart
       .findOne({ user: user._id })
-      .populate({ path: "products.product", select: "name price image" })
+      .populate({ path: "products.product", select: "name price image seller_id" })
       .populate({ path: "user", select: "firstname lastname mobile_number" });
     if (!cart) {
       return res.status(404).send({ message: "Cart not found" });
@@ -86,7 +86,12 @@ exports.getCart = async (req, res) => {
       message: "Cart retrieved successfully",
       cart: cart,
     });
-  } catch (error) {}
+  } catch (error) {
+    return res.status(500).send({
+      message: "Internal server error",
+      error: error.message,
+    });
+  }
 };
 
 exports.deleteFromCart = async (req, res) => {

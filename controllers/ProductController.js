@@ -2,9 +2,17 @@ const DB = require("../models");
 
 exports.createProduct = async (req, res) => {
   try {
+    const { id_number } = req.user;
     const data = req.body;
 
-    const product = await DB.product.create(data);
+    const seller = await DB.user.findOne({ id_number, role: "seller" });
+    if (!seller) {
+      return res.status(404).json({ message: "Seller not found" });
+    }
+
+    const seller_id = seller._id;
+
+    const product = await DB.product.create({ ...data, seller_id });
     await product.save();
 
     return res.status(201).json({
