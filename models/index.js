@@ -18,4 +18,7 @@ DB.notification = require("./Notification")(mongoose);
 // chat
 DB.message = require("./Message")(mongoose);
 
+// reviews
+DB.reviews = require("./Reviews")(mongoose);
+
 module.exports = DB;
