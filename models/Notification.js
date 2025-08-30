@@ -23,8 +23,7 @@ function _schema(mongoose) {
         required: true,
       },
       orderId: {
-        type: Schema.Types.ObjectId,
-        ref: "order",
+        type: String,
         required: true,
       },
       products: [

@@ -1,4 +1,5 @@
 const DB = require("../models");
+const orderHelper = require("../helper/orderHelper");
 
 exports.placeOrder = async (req, res) => {
   try {
@@ -53,8 +54,12 @@ exports.placeOrder = async (req, res) => {
       return res.status(400).json({ message: "Cart is empty" });
     }
 
+    // --- Generate unique random 8-digit order ID ---
+    const orderId = await orderHelper.generateOrderId();
+
     // --- Create new order ---
     const newOrder = await DB.order.create({
+      orderId, // store generated ID
       id_number: cart.id_number,
       user: cart.user,
       products: cart.products,
@@ -99,12 +104,12 @@ exports.placeOrder = async (req, res) => {
 
       const message = `📢 ${cart.user.firstname} ${
         cart.user.lastname
-      } ordered: ${productNames.join(", ")}`;
+      } ordered: ${productNames.join(", ")} (Order #${newOrder.orderId})`;
 
       const notif = await DB.notification.create({
         seller_id: sellerId,
         user: cart.user._id,
-        orderId: newOrder._id,
+        orderId: newOrder.orderId, // ✅ use generated 8-digit ID
         products: productIds,
         message,
         isRead: false,
@@ -120,7 +125,7 @@ exports.placeOrder = async (req, res) => {
 
     return res.status(201).json({
       message: "Order placed successfully",
-      order: newOrder,
+      order: newOrder, // includes orderId
     });
   } catch (error) {
     console.error(error);
@@ -248,8 +253,12 @@ exports.buyNow = async (req, res) => {
 
     const totalAmount = product.price * qty;
 
+    // --- Generate unique random 8-digit order ID ---
+    const orderId = await orderHelper.generateOrderId();
+
     // --- Create new order ---
     const newOrder = await DB.order.create({
+      orderId,
       id_number: id_number,
       user: user._id,
       products: [orderProduct],
@@ -262,12 +271,12 @@ exports.buyNow = async (req, res) => {
     // --- Notify seller ---
     if (product.seller_id) {
       const sellerId = product.seller_id.toString();
-      const message = `📢 ${user.firstname} ${user.lastname} bought: ${product.name}`;
+      const message = `📢 ${user.firstname} ${user.lastname} bought: ${product.name} (Order #${newOrder.orderId})`;
 
       const notif = await DB.notification.create({
         seller_id: sellerId,
         user: user._id,
-        orderId: newOrder._id,
+        orderId: newOrder.orderId,
         products: [product._id],
         message,
         isRead: false,
@@ -280,7 +289,7 @@ exports.buyNow = async (req, res) => {
 
     return res.status(201).json({
       message: "Order placed successfully",
-      order: newOrder,
+      order: newOrder, // includes orderId
     });
   } catch (error) {
     console.error(error);

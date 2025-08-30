@@ -12,6 +12,10 @@ module.exports = (mongoose) => {
 function _schema(mongoose) {
   return mongoose.Schema(
     {
+      orderId: {
+        type: String,
+        required: true,
+      },
       id_number: {
         type: String,
         required: true,
