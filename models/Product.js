@@ -39,7 +39,7 @@ function _schema(mongoose) {
       },
       status: {
         type: String,
-        default: "Active",
+        default: "Inactive",
       },
       type: {
         type: String,
