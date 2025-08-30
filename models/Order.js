@@ -42,7 +42,7 @@ function _schema(mongoose) {
       },
       status: {
         type: String,
-        enum: ["In Transit", "Delivered", "Processing"],
+        enum: ["In Transit", "Delivered", "Processing", "Cancelled"],
         default: "Processing",
       },
       shippingAddress: {

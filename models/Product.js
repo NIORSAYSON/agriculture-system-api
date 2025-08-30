@@ -50,6 +50,10 @@ function _schema(mongoose) {
         ref: "user",
         // required: true,
       },
+      isApproved: {
+        type: Boolean,
+        default: false,
+      },
       deleted_at: {
         type: Date,
         default: null,
