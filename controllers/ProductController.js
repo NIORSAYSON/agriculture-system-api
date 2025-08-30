@@ -28,7 +28,7 @@ exports.createProduct = async (req, res) => {
 
 exports.getAllProducts = async (req, res) => {
   try {
-    const { limit, page, status, type, id, search } = req.query;
+    const { limit, page, status, type, id, search, isApproved } = req.query;
     const itemsLimit = Math.max(parseInt(limit) || 10, 1);
     const pageNumber = Math.max(parseInt(page) || 1, 1);
     const skip = (pageNumber - 1) * itemsLimit;
@@ -46,10 +46,12 @@ exports.getAllProducts = async (req, res) => {
         { name: { $regex: search.toLowerCase(), $options: "i" } },
       ];
     }
+    if (isApproved) condition.isApproved = isApproved;
 
     const products = await DB.product
       .find(condition)
       .populate({ path: "category", select: "name status" })
+      .populate({ path: "seller_id", select: "firstname lastname avatar" })
       .limit(itemsLimit)
       .skip(skip);
 
