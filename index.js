@@ -12,7 +12,7 @@ const momentTimezone = require("moment-timezone");
 const socketIO = require("socket.io");
 const { chatSocket } = require("./socket/chatSocket");
 const http = require("http");
-const { initSocket } = require("./config/socket.js");
+const { initWebSocket } = require("./config/socket.js");
 
 const DB = require("./models");
 
@@ -62,7 +62,7 @@ DB.mongoose
     console.log(process.env.MONGO_URL);
 
     indexRoutes(app);
-    initSocket(server);
+    initWebSocket(server);
 
     const currentDate = moment();
     const timezone = momentTimezone.tz.guess();
