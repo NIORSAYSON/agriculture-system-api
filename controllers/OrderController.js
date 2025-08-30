@@ -135,7 +135,14 @@ exports.getOrders = async (req, res) => {
     if (status) condition.status = status;
 
     // Find all orders for the user
-    const orders = await DB.order.find(condition).skip(skip).limit(itemsLimit);
+    const orders = await DB.order
+      .find(condition)
+      .skip(skip)
+      .limit(itemsLimit)
+      .populate({
+        path: "products.product",
+        select: "name image price",
+      });
 
     if (!orders || orders.length === 0) {
       return res.status(404).json({ message: "No orders found" });
