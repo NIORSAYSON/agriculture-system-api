@@ -64,6 +64,20 @@ exports.placeOrder = async (req, res) => {
       date: new Date(),
     });
 
+    // --- Deduct product stock ---
+    for (const item of cart.products) {
+      const product = await DB.product.findById(item.product._id);
+      if (product) {
+        if (product.quantity < item.quantity) {
+          return res.status(400).json({
+            message: `Insufficient stock for ${product.name}`,
+          });
+        }
+        product.quantity -= item.quantity;
+        await product.save();
+      }
+    }
+
     // --- Group products per seller ---
     const sellerProductsMap = {};
     cart.products.forEach((p) => {
@@ -212,14 +226,27 @@ exports.buyNow = async (req, res) => {
       return res.status(400).json({ message: "Product is not available" });
     }
 
+    const qty = quantity || 1;
+
+    // --- Check stock ---
+    if (product.stock < qty) {
+      return res.status(400).json({
+        message: `Insufficient stock for ${product.name}`,
+      });
+    }
+
+    // --- Deduct stock ---
+    product.stock -= qty;
+    await product.save();
+
     // --- Build product item ---
     const orderProduct = {
       product: product._id,
-      quantity: quantity || 1,
+      quantity: qty,
       price: product.price,
     };
 
-    const totalAmount = product.price * (quantity || 1);
+    const totalAmount = product.price * qty;
 
     // --- Create new order ---
     const newOrder = await DB.order.create({
@@ -232,13 +259,14 @@ exports.buyNow = async (req, res) => {
       date: new Date(),
     });
 
+    // --- Notify seller ---
     if (product.seller_id) {
       const sellerId = product.seller_id.toString();
-
       const message = `📢 ${user.firstname} ${user.lastname} bought: ${product.name}`;
+
       const notif = await DB.notification.create({
         seller_id: sellerId,
-        user: user._id, // keep same style as placeOrder
+        user: user._id,
         orderId: newOrder._id,
         products: [product._id],
         message,
