@@ -7,4 +7,6 @@ router.get("/", checkAuth, OrderController.getOrders);
 
 router.post("/placeOrder", checkAuth, OrderController.placeOrder);
 
+router.post("/buyNow", checkAuth, OrderController.buyNow);
+
 module.exports = router;

@@ -158,3 +158,100 @@ exports.getOrders = async (req, res) => {
     });
   }
 };
+
+exports.buyNow = async (req, res) => {
+  try {
+    const { id_number } = req.user;
+    const { productId, quantity, addressId } = req.body;
+
+    // --- Validate user ---
+    const user = await DB.user.findOne({ id_number });
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // --- Determine shippingAddress ---
+    let shippingAddress;
+    if (addressId) {
+      const selectedAddress = user.address.find(
+        (addr) => addr._id.toString() === addressId
+      );
+      if (!selectedAddress) {
+        return res.status(400).json({ message: "Invalid address ID" });
+      }
+      shippingAddress = selectedAddress;
+    } else {
+      const defaultAddress = user.address.find(
+        (addr) => addr.isDefault === true
+      );
+      if (defaultAddress) {
+        shippingAddress = defaultAddress;
+      } else if (user.address.length > 0) {
+        shippingAddress = user.address[0];
+      } else {
+        return res
+          .status(400)
+          .json({ message: "Shipping address is required" });
+      }
+    }
+
+    // --- Find product ---
+    const product = await DB.product.findById(productId);
+    if (!product) {
+      return res.status(404).json({ message: "Product not found" });
+    }
+
+    if (product.type !== "Available") {
+      return res.status(400).json({ message: "Product is not available" });
+    }
+
+    // --- Build product item ---
+    const orderProduct = {
+      product: product._id,
+      quantity: quantity || 1,
+      price: product.price,
+    };
+
+    const totalAmount = product.price * (quantity || 1);
+
+    // --- Create new order ---
+    const newOrder = await DB.order.create({
+      id_number: id_number,
+      user: user._id,
+      products: [orderProduct],
+      totalAmount,
+      status: "Processing",
+      shippingAddress,
+      date: new Date(),
+    });
+
+    if (product.seller_id) {
+      const sellerId = product.seller_id.toString();
+
+      const message = `📢 ${user.firstname} ${user.lastname} bought: ${product.name}`;
+      const notif = await DB.notification.create({
+        seller_id: sellerId,
+        user: user._id, // keep same style as placeOrder
+        orderId: newOrder._id,
+        products: [product._id],
+        message,
+        isRead: false,
+        date: new Date(),
+      });
+
+      global.io.to(`seller:${sellerId}`).emit("newOrderNotification", notif);
+      console.log(`📢 Notified seller ${sellerId} via room seller:${sellerId}`);
+    }
+
+    return res.status(201).json({
+      message: "Order placed successfully",
+      order: newOrder,
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      message: "Internal server error",
+      error: error.message,
+    });
+  }
+};
