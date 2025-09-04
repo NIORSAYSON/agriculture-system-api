@@ -11,6 +11,7 @@ const initRoutes = (app) => {
   router.use("/messages", require("./message"));
   router.use("/order", require("./order"));
   router.use("/reviews", require("./reviews"));
+  router.use("/notification", require("./notification"));
 
   router.get("/", (req, res) => {
     return res.json({

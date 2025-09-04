@@ -35,7 +35,6 @@ exports.getAllProducts = async (req, res) => {
 
     const condition = {
       status: "Active",
-      isApproved: true,
       deleted_at: null,
     };
 
