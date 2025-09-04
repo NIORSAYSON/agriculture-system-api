@@ -77,21 +77,88 @@ exports.getAllProducts = async (req, res) => {
   }
 };
 
+// Get seller's own products
+exports.getSellerProducts = async (req, res) => {
+  try {
+    const { id_number } = req.user;
+    const { limit, page, status, type, search } = req.query;
+    const itemsLimit = Math.max(parseInt(limit) || 10, 1);
+    const pageNumber = Math.max(parseInt(page) || 1, 1);
+    const skip = (pageNumber - 1) * itemsLimit;
+
+    // Find seller
+    const seller = await DB.user.findOne({ id_number, role: "seller" });
+    if (!seller) {
+      return res.status(404).json({ message: "Seller not found" });
+    }
+
+    const condition = {
+      seller_id: seller._id,
+      deleted_at: null,
+    };
+
+    if (status) condition.status = status;
+    if (type) condition.type = type;
+    if (search) {
+      condition.$or = [
+        { name: { $regex: search.toLowerCase(), $options: "i" } },
+        { description: { $regex: search.toLowerCase(), $options: "i" } },
+      ];
+    }
+
+    const products = await DB.product
+      .find(condition)
+      .populate({ path: "category", select: "name status" })
+      .populate({ path: "seller_id", select: "firstname lastname avatar" })
+      .sort({ createdAt: -1 })
+      .limit(itemsLimit)
+      .skip(skip);
+
+    const countProducts = await DB.product.countDocuments(condition);
+    const totalPages = Math.ceil(countProducts / itemsLimit);
+
+    return res.status(200).json({
+      message: "Seller products retrieved successfully",
+      products: products,
+      countProducts: countProducts,
+      currentPage: pageNumber,
+      totalPages: totalPages,
+    });
+  } catch (error) {
+    return res
+      .status(500)
+      .json({ message: "Internal Server Error", error: error.message });
+  }
+};
+
 exports.updateProduct = async (req, res) => {
   try {
+    const { id_number } = req.user;
     const productId = req.params.id;
     const newData = req.body;
 
-    const product = await DB.product.findById(productId);
-    if (!product) {
-      return res.status(404).json({ message: "Product not found" });
+    // Find seller
+    const seller = await DB.user.findOne({ id_number, role: "seller" });
+    if (!seller) {
+      return res.status(404).json({ message: "Seller not found" });
     }
 
-    const updatedProduct = await DB.product.findByIdAndUpdate(
-      productId,
-      { $set: newData },
-      { new: true }
-    );
+    // Find product and verify ownership
+    const product = await DB.product.findOne({
+      _id: productId,
+      seller_id: seller._id,
+      deleted_at: null,
+    });
+
+    if (!product) {
+      return res.status(404).json({
+        message: "Product not found or you don't have permission to update it",
+      });
+    }
+
+    const updatedProduct = await DB.product
+      .findByIdAndUpdate(productId, { $set: newData }, { new: true })
+      .populate({ path: "category", select: "name status" });
 
     return res.status(200).json({
       message: "Product updated successfully",
@@ -104,17 +171,158 @@ exports.updateProduct = async (req, res) => {
   }
 };
 
-exports.deleteProduct = async (req, res) => {
+// Get seller product statistics
+exports.getSellerProductStats = async (req, res) => {
   try {
-    const productId = req.params.id;
+    const { id_number } = req.user;
 
-    const product = await DB.product.findById(productId);
-
-    if (!product) {
-      return res.status(404).json({ message: "Product not found" });
+    // Find seller
+    const seller = await DB.user.findOne({ id_number, role: "seller" });
+    if (!seller) {
+      return res.status(404).json({ message: "Seller not found" });
     }
 
-    const deletedProduct = await DB.product.findByIdAndDelete(productId);
+    const condition = {
+      seller_id: seller._id,
+      deleted_at: null,
+    };
+
+    // Get product statistics
+    const totalProducts = await DB.product.countDocuments(condition);
+
+    const activeProducts = await DB.product.countDocuments({
+      ...condition,
+      status: "Active",
+    });
+
+    const inactiveProducts = await DB.product.countDocuments({
+      ...condition,
+      status: "Inactive",
+    });
+
+    const availableProducts = await DB.product.countDocuments({
+      ...condition,
+      type: "Available",
+    });
+
+    const outOfStockProducts = await DB.product.countDocuments({
+      ...condition,
+      type: "Out of Stock",
+    });
+
+    const approvedProducts = await DB.product.countDocuments({
+      ...condition,
+      isApproved: true,
+    });
+
+    const pendingProducts = await DB.product.countDocuments({
+      ...condition,
+      isApproved: false,
+    });
+
+    // Get recent products (last 5)
+    const recentProducts = await DB.product
+      .find(condition)
+      .populate({ path: "category", select: "name" })
+      .sort({ createdAt: -1 })
+      .limit(5)
+      .select("name price status type isApproved createdAt");
+
+    return res.status(200).json({
+      message: "Seller product statistics retrieved successfully",
+      stats: {
+        totalProducts,
+        productsByStatus: {
+          active: activeProducts,
+          inactive: inactiveProducts,
+        },
+        productsByType: {
+          available: availableProducts,
+          outOfStock: outOfStockProducts,
+        },
+        productsByApproval: {
+          approved: approvedProducts,
+          pending: pendingProducts,
+        },
+        recentProducts,
+      },
+    });
+  } catch (error) {
+    return res
+      .status(500)
+      .json({ message: "Internal Server Error", error: error.message });
+  }
+};
+
+// Get single product for seller (with ownership validation)
+exports.getSellerProduct = async (req, res) => {
+  try {
+    const { id_number } = req.user;
+    const productId = req.params.id;
+
+    // Find seller
+    const seller = await DB.user.findOne({ id_number, role: "seller" });
+    if (!seller) {
+      return res.status(404).json({ message: "Seller not found" });
+    }
+
+    // Find product and verify ownership
+    const product = await DB.product
+      .findOne({
+        _id: productId,
+        seller_id: seller._id,
+        deleted_at: null,
+      })
+      .populate({ path: "category", select: "name status" })
+      .populate({ path: "seller_id", select: "firstname lastname avatar" });
+
+    if (!product) {
+      return res.status(404).json({
+        message: "Product not found or you don't have permission to view it",
+      });
+    }
+
+    return res.status(200).json({
+      message: "Product retrieved successfully",
+      product: product,
+    });
+  } catch (error) {
+    return res
+      .status(500)
+      .json({ message: "Internal Server Error", error: error.message });
+  }
+};
+
+exports.deleteProduct = async (req, res) => {
+  try {
+    const { id_number } = req.user;
+    const productId = req.params.id;
+
+    // Find seller
+    const seller = await DB.user.findOne({ id_number, role: "seller" });
+    if (!seller) {
+      return res.status(404).json({ message: "Seller not found" });
+    }
+
+    // Find product and verify ownership
+    const product = await DB.product.findOne({
+      _id: productId,
+      seller_id: seller._id,
+      deleted_at: null,
+    });
+
+    if (!product) {
+      return res.status(404).json({
+        message: "Product not found or you don't have permission to delete it",
+      });
+    }
+
+    // Soft delete by setting deleted_at timestamp
+    const deletedProduct = await DB.product.findByIdAndUpdate(
+      productId,
+      { deleted_at: new Date() },
+      { new: true }
+    );
 
     return res.status(200).json({
       message: "Product deleted successfully",
