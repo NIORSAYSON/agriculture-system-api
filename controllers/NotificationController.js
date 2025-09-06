@@ -2,13 +2,10 @@ const DB = require("../models");
 
 exports.getNotifications = async (req, res) => {
   try {
-    const { id_number } = req.user;
+    // const { id_number } = req.user;
+    // const user = await DB.user.findOne({ id_number });
 
-    const user = await DB.user.findOne({ id_number });
-
-    const notifications = await DB.notification
-      .find({ user: user._id })
-      .populate("orderId", "orderId");
+    const notifications = await DB.notification.find({ deleted_at: null });
 
     return res.status(200).json({
       message: "Notifications retrieved successfully",
