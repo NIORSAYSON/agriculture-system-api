@@ -44,7 +44,7 @@ exports.placeOrder = async (req, res) => {
       .findOne({ id_number })
       .populate(
         "products.product",
-        "_id name price description category status type image seller_id"
+        "_id name price description category status type image seller_id stock"
       )
       .populate("user", "firstname lastname mobile_number");
 
@@ -54,6 +54,49 @@ exports.placeOrder = async (req, res) => {
 
     if (cart.products.length === 0) {
       return res.status(400).json({ message: "Cart is empty" });
+    }
+
+    // --- Validate all products are available and have valid sellers ---
+    for (const item of cart.products) {
+      const product = item.product;
+
+      if (!product) {
+        return res.status(400).json({
+          message: "One or more products in cart are no longer available",
+        });
+      }
+
+      if (product.type !== "Available" || product.status !== "Active") {
+        return res.status(400).json({
+          message: `Product ${product.name} is no longer available`,
+        });
+      }
+
+      if (!product.seller_id) {
+        return res.status(400).json({
+          message: `Product ${product.name} has no valid seller`,
+        });
+      }
+
+      // Verify seller exists and is active
+      const seller = await DB.user.findOne({
+        _id: product.seller_id,
+        role: "seller",
+        status: "Active",
+        deleted_at: null,
+      });
+
+      if (!seller) {
+        return res.status(400).json({
+          message: `Seller for product ${product.name} is not available`,
+        });
+      }
+
+      if (product.stock < item.quantity) {
+        return res.status(400).json({
+          message: `Insufficient stock for ${product.name}. Available: ${product.stock}, Requested: ${item.quantity}`,
+        });
+      }
     }
 
     // --- Generate unique random 8-digit order ID ---
@@ -75,12 +118,12 @@ exports.placeOrder = async (req, res) => {
     for (const item of cart.products) {
       const product = await DB.product.findById(item.product._id);
       if (product) {
-        if (product.quantity < item.quantity) {
+        if (product.stock < item.quantity) {
           return res.status(400).json({
             message: `Insufficient stock for ${product.name}`,
           });
         }
-        product.quantity -= item.quantity;
+        product.stock -= item.quantity;
         await product.save();
       }
     }
@@ -241,12 +284,34 @@ exports.buyNow = async (req, res) => {
       return res.status(400).json({ message: "Product is not available" });
     }
 
+    if (product.status !== "Active") {
+      return res.status(400).json({ message: "Product is not active" });
+    }
+
+    if (!product.seller_id) {
+      return res.status(400).json({ message: "Product has no valid seller" });
+    }
+
+    // Verify seller exists and is active
+    const seller = await DB.user.findOne({
+      _id: product.seller_id,
+      role: "seller",
+      status: "Active",
+      deleted_at: null,
+    });
+
+    if (!seller) {
+      return res
+        .status(400)
+        .json({ message: "Product seller is not available" });
+    }
+
     const qty = quantity || 1;
 
     // --- Check stock ---
     if (product.stock < qty) {
       return res.status(400).json({
-        message: `Insufficient stock for ${product.name}`,
+        message: `Insufficient stock for ${product.name}. Available: ${product.stock}, Requested: ${qty}`,
       });
     }
 
@@ -305,6 +370,372 @@ exports.buyNow = async (req, res) => {
     return res.status(201).json({
       message: "Order placed successfully",
       order: newOrder, // includes orderId
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      message: "Internal server error",
+      error: error.message,
+    });
+  }
+};
+
+// ===== SELLER ORDER MANAGEMENT =====
+
+exports.getSellerOrders = async (req, res) => {
+  try {
+    const { id_number } = req.user;
+    const { limit, page, status } = req.query;
+    const itemsLimit = Math.max(parseInt(limit) || 10, 1);
+    const pageNumber = Math.max(parseInt(page) || 1, 1);
+    const skip = (pageNumber - 1) * itemsLimit;
+
+    // Find seller
+    const seller = await DB.user.findOne({ id_number, role: "seller" });
+    if (!seller) {
+      return res.status(404).json({ message: "Seller not found" });
+    }
+
+    // Find all products belonging to this seller
+    const sellerProducts = await DB.product
+      .find({
+        seller_id: seller._id,
+        deleted_at: null,
+      })
+      .select("_id");
+
+    const productIds = sellerProducts.map((p) => p._id);
+
+    if (productIds.length === 0) {
+      return res.status(200).json({
+        message: "No orders found",
+        orders: [],
+        countOrders: 0,
+        currentPage: pageNumber,
+        totalPages: 0,
+      });
+    }
+
+    // Build query condition
+    const condition = {
+      "products.product": { $in: productIds },
+      deleted_at: null,
+    };
+
+    if (status) condition.status = status;
+
+    // Find orders that contain seller's products
+    const orders = await DB.order
+      .find(condition)
+      .skip(skip)
+      .limit(itemsLimit)
+      .populate({
+        path: "products.product",
+        select: "name image price seller_id",
+      })
+      .populate({
+        path: "user",
+        select: "firstname lastname mobile_number email",
+      })
+      .sort({ createdAt: -1 });
+
+    // Filter orders to only include products that belong to this seller
+    const filteredOrders = orders
+      .map((order) => {
+        const sellerProducts = order.products.filter(
+          (item) =>
+            item.product &&
+            item.product.seller_id &&
+            item.product.seller_id.toString() === seller._id.toString()
+        );
+
+        // Calculate total for seller's products only
+        const sellerTotal = sellerProducts.reduce(
+          (sum, item) => sum + item.product.price * item.quantity,
+          0
+        );
+
+        return {
+          ...order.toObject(),
+          products: sellerProducts,
+          sellerTotal,
+        };
+      })
+      .filter((order) => order.products.length > 0);
+
+    const countOrders = await DB.order.countDocuments(condition);
+    const totalPages = Math.ceil(countOrders / itemsLimit);
+
+    return res.status(200).json({
+      message: "Seller orders retrieved successfully",
+      orders: filteredOrders,
+      countOrders: filteredOrders.length,
+      currentPage: pageNumber,
+      totalPages: totalPages,
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      message: "Internal server error",
+      error: error.message,
+    });
+  }
+};
+
+exports.updateOrderStatus = async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const { status } = req.body;
+
+    // Validate status
+    const validStatuses = [
+      "In Transit",
+      "Delivered",
+      "Processing",
+      "Cancelled",
+    ];
+    if (!validStatuses.includes(status)) {
+      return res.status(400).json({
+        message: "Invalid status. Must be one of: " + validStatuses.join(", "),
+      });
+    }
+
+    // Get seller and order from middleware (already validated)
+    const seller = req.seller;
+    const order = req.orderData;
+
+    // Update order status
+    order.status = status;
+    await order.save();
+
+    // Create notification for buyer
+    const buyerMessage = `📦 Your order #${order.orderId} status has been updated to: ${status}`;
+
+    await DB.notification.create({
+      seller_id: seller._id, // Seller who updated the status
+      user: order.user,
+      orderId: order.orderId,
+      products: order.products.map((p) => p.product._id),
+      message: buyerMessage,
+      isRead: false,
+      date: new Date(),
+    });
+
+    // Emit real-time notification to buyer
+    global.io.to(`user:${order.user}`).emit("orderStatusUpdate", {
+      orderId: order.orderId,
+      status: status,
+      message: buyerMessage,
+    });
+
+    return res.status(200).json({
+      message: "Order status updated successfully",
+      order: {
+        orderId: order.orderId,
+        status: order.status,
+      },
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      message: "Internal server error",
+      error: error.message,
+    });
+  }
+};
+
+exports.getOrderDetails = async (req, res) => {
+  try {
+    const { id_number } = req.user;
+    const { orderId } = req.params;
+
+    // Check if user is seller or regular user
+    const user = await DB.user.findOne({ id_number });
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Find order
+    const order = await DB.order
+      .findOne({
+        orderId,
+        deleted_at: null,
+      })
+      .populate({
+        path: "products.product",
+        select: "name image price seller_id description",
+      })
+      .populate({
+        path: "user",
+        select: "firstname lastname mobile_number email",
+      });
+
+    if (!order) {
+      return res.status(404).json({ message: "Order not found" });
+    }
+
+    // If user is a seller, filter to only their products
+    if (user.role === "seller") {
+      const sellerProducts = order.products.filter(
+        (item) =>
+          item.product &&
+          item.product.seller_id &&
+          item.product.seller_id.toString() === user._id.toString()
+      );
+
+      if (sellerProducts.length === 0) {
+        return res.status(403).json({
+          message:
+            "Access denied. You can only view orders for your own products.",
+        });
+      }
+
+      // Return filtered order for seller
+      const sellerTotal = sellerProducts.reduce(
+        (sum, item) => sum + item.product.price * item.quantity,
+        0
+      );
+
+      return res.status(200).json({
+        message: "Order details retrieved successfully",
+        order: {
+          ...order.toObject(),
+          products: sellerProducts,
+          sellerTotal,
+        },
+      });
+    } else {
+      // Regular user can only view their own orders
+      if (order.user._id.toString() !== user._id.toString()) {
+        return res.status(403).json({
+          message: "Access denied. You can only view your own orders.",
+        });
+      }
+
+      return res.status(200).json({
+        message: "Order details retrieved successfully",
+        order: order,
+      });
+    }
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      message: "Internal server error",
+      error: error.message,
+    });
+  }
+};
+
+exports.getSellerOrderStats = async (req, res) => {
+  try {
+    const { id_number } = req.user;
+
+    // Find seller
+    const seller = await DB.user.findOne({ id_number, role: "seller" });
+    if (!seller) {
+      return res.status(404).json({ message: "Seller not found" });
+    }
+
+    // Find all products belonging to this seller
+    const sellerProducts = await DB.product
+      .find({
+        seller_id: seller._id,
+        deleted_at: null,
+      })
+      .select("_id");
+
+    const productIds = sellerProducts.map((p) => p._id);
+
+    if (productIds.length === 0) {
+      return res.status(200).json({
+        message: "No statistics available",
+        stats: {
+          totalOrders: 0,
+          totalRevenue: 0,
+          ordersByStatus: {
+            Processing: 0,
+            "In Transit": 0,
+            Delivered: 0,
+            Cancelled: 0,
+          },
+          recentOrders: [],
+        },
+      });
+    }
+
+    // Find orders that contain seller's products
+    const allOrders = await DB.order
+      .find({
+        "products.product": { $in: productIds },
+        deleted_at: null,
+      })
+      .populate({
+        path: "products.product",
+        select: "name price seller_id",
+      })
+      .populate({
+        path: "user",
+        select: "firstname lastname",
+      })
+      .sort({ createdAt: -1 });
+
+    // Filter and calculate stats for seller's products only
+    let totalRevenue = 0;
+    const ordersByStatus = {
+      Processing: 0,
+      "In Transit": 0,
+      Delivered: 0,
+      Cancelled: 0,
+    };
+
+    const validOrders = allOrders.filter((order) => {
+      const sellerProducts = order.products.filter(
+        (item) =>
+          item.product &&
+          item.product.seller_id &&
+          item.product.seller_id.toString() === seller._id.toString()
+      );
+
+      if (sellerProducts.length > 0) {
+        // Calculate revenue for this seller's products in this order
+        const orderRevenue = sellerProducts.reduce(
+          (sum, item) => sum + item.product.price * item.quantity,
+          0
+        );
+        totalRevenue += orderRevenue;
+
+        // Count order by status
+        ordersByStatus[order.status] = (ordersByStatus[order.status] || 0) + 1;
+
+        return true;
+      }
+      return false;
+    });
+
+    // Get recent orders (last 5)
+    const recentOrders = validOrders.slice(0, 5).map((order) => ({
+      orderId: order.orderId,
+      status: order.status,
+      customerName: `${order.user.firstname} ${order.user.lastname}`,
+      totalAmount: order.products
+        .filter(
+          (item) =>
+            item.product &&
+            item.product.seller_id &&
+            item.product.seller_id.toString() === seller._id.toString()
+        )
+        .reduce((sum, item) => sum + item.product.price * item.quantity, 0),
+      createdAt: order.createdAt,
+    }));
+
+    return res.status(200).json({
+      message: "Seller statistics retrieved successfully",
+      stats: {
+        totalOrders: validOrders.length,
+        totalRevenue: totalRevenue,
+        ordersByStatus: ordersByStatus,
+        recentOrders: recentOrders,
+      },
     });
   } catch (error) {
     console.error(error);
