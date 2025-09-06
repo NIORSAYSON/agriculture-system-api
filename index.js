@@ -9,7 +9,6 @@ require("dotenv").config();
 const cookieParser = require("cookie-parser");
 const moment = require("moment");
 const momentTimezone = require("moment-timezone");
-const socketIO = require("socket.io");
 const { chatSocket } = require("./socket/chatSocket");
 const http = require("http");
 const { initWebSocket } = require("./config/socket.js");
@@ -19,9 +18,6 @@ const DB = require("./models");
 const app = express();
 const PORT = process.env.PORT || 3004;
 const server = http.createServer(app);
-const io = socketIO(server, {
-  cors: { origin: "*", methods: ["GET", "POST"] },
-});
 
 const corsObj = {
   origin: true,
@@ -46,9 +42,13 @@ app.use(cookieParser());
 
 app.use(bodyParser.json());
 
-// socket
+// --- SOCKET.IO SETUP ---
+// Initialize Socket.IO and room logic
+const io = initWebSocket(server);
+// Add user authentication and mapping logic
 chatSocket(io);
 app.set("io", io);
+// --- END SOCKET.IO SETUP ---
 
 // connectToMongoDB();
 // indexRoutes(app);
@@ -62,7 +62,6 @@ DB.mongoose
     console.log(process.env.MONGO_URL);
 
     indexRoutes(app);
-    initWebSocket(server);
 
     const currentDate = moment();
     const timezone = momentTimezone.tz.guess();

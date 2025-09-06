@@ -1,10 +1,12 @@
 const DB = require("../models");
 const orderHelper = require("../helper/orderHelper");
+const { connectedUsers } = require("../socket/chatSocket");
 
 exports.placeOrder = async (req, res) => {
   try {
     const { id_number } = req.user;
     let { addressId } = req.body || {};
+    const io = req.app.get("io");
 
     // --- Find user ---
     const user = await DB.user.findOne({ id_number });
@@ -116,7 +118,14 @@ exports.placeOrder = async (req, res) => {
         date: new Date(),
       });
 
-      global.io.to(`seller:${sellerId}`).emit("newOrderNotification", notif);
+      const receiverSocketId = connectedUsers.get(sellerId.toString());
+      if (receiverSocketId) {
+        io.to(receiverSocketId).emit("newOrderNotificationPopupNow", notif);
+      }
+
+      global.io
+        .to(`seller:${sellerId}`)
+        .emit("newOrderNotificationPopupNow", notif);
       console.log(`📢 Notified seller ${sellerId} via room seller:${sellerId}`);
     }
 
@@ -143,6 +152,7 @@ exports.getOrders = async (req, res) => {
     const itemsLimit = Math.max(parseInt(limit) || 10, 1);
     const pageNumber = Math.max(parseInt(page) || 1, 1);
     const skip = (pageNumber - 1) * itemsLimit;
+    const io = req.app.get("io");
 
     const user = await DB.user.findOne({ id_number });
 
@@ -283,8 +293,13 @@ exports.buyNow = async (req, res) => {
         date: new Date(),
       });
 
+      const receiverSocketId = connectedUsers.get(product.seller_id.toString());
+      if (receiverSocketId) {
+        io.to(receiverSocketId).emit("newOrderNotificationPopupNow", notif);
+      }
+
       global.io.to(`seller:${sellerId}`).emit("newOrderNotification", notif);
-      console.log(`📢 Notified seller ${sellerId} via room seller:${sellerId}`);
+      // console.log(`📢 Notified seller ${sellerId} via room seller:${sellerId}`);
     }
 
     return res.status(201).json({
