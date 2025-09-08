@@ -20,6 +20,17 @@ exports.addReview = async (req, res) => {
 
     await review.save();
 
+    // Update the isRate field for the specific product in all orders for this user
+    await DB.order.updateMany(
+      {
+        user: customer._id,
+        "products.product": product,
+      },
+      {
+        $set: { "products.$.isRate": true },
+      }
+    );
+
     res.status(201).json({ message: "Review added successfully", review });
   } catch (err) {
     res.status(500).json({ error: err.message });
