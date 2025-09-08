@@ -1,12 +1,12 @@
 const express = require("express");
 const router = express.Router();
-const { checkAuth } = require("../middleware/checkAuth");
+const { checkAuth, checkCustomer } = require("../middleware/checkAuth");
 const CartController = require("../controllers/CartController");
 
-router.post("/", checkAuth, CartController.addToCart);
+router.post("/", checkCustomer, checkAuth, CartController.addToCart);
 
-router.get("/", checkAuth, CartController.getCart);
+router.get("/", checkCustomer, checkAuth, CartController.getCart);
 
-router.delete("/delete", checkAuth, CartController.deleteFromCart);
+router.delete("/delete", checkCustomer, checkAuth, CartController.deleteFromCart);
 
 module.exports = router;

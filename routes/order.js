@@ -5,12 +5,18 @@ const {
   checkAuth,
   checkSeller,
   checkSellerOrderAccess,
+  checkCustomer,
 } = require("../middleware/checkAuth");
 
 // Customer order routes
-router.get("/", checkAuth, OrderController.getOrders);
-router.post("/placeOrder", checkAuth, OrderController.placeOrder);
-router.post("/buyNow", checkAuth, OrderController.buyNow);
+router.get("/", checkAuth, checkCustomer, OrderController.getOrders);
+router.post(
+  "/placeOrder",
+  checkAuth,
+  checkCustomer,
+  OrderController.placeOrder
+);
+router.post("/buyNow", checkAuth, checkCustomer, OrderController.buyNow);
 
 // Seller order management routes
 router.get("/seller", checkAuth, checkSeller, OrderController.getSellerOrders);

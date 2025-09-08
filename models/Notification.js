@@ -15,22 +15,22 @@ function _schema(mongoose) {
       seller_id: {
         type: Schema.Types.ObjectId,
         ref: "user",
-        required: true,
+      },
+      admin_id: {
+        type: Schema.Types.ObjectId,
+        ref: "user",
       },
       user: {
         type: Schema.Types.ObjectId,
         ref: "user", // buyer
-        required: true,
       },
       orderId: {
         type: String,
-        required: true,
       },
       products: [
         {
           type: Schema.Types.ObjectId,
           ref: "product",
-          required: true,
         },
       ],
       message: {

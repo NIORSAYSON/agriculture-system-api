@@ -41,12 +41,30 @@ exports.checkAuth = async function (req, res, next) {
 };
 
 exports.checkSeller = function (req, res, next) {
-  if (req.user && req.user.role === "seller") {
+  if (req.user && req.user.role.toLowerCase() === "seller") {
     return next();
   }
   return res
     .status(403)
     .json({ message: "Access denied. Sellers are only allowed." });
+};
+
+exports.checkAdmin = function (req, res, next) {
+  if (req.user && req.user.role.toLowerCase() === "admin") {
+    return next();
+  }
+  return res
+    .status(403)
+    .json({ message: "Access denied. Admins are only allowed." });
+};
+
+exports.checkCustomer = function (req, res, next) {
+  if (req.user && req.user.role.toLowerCase() === "user") {
+    return next();
+  }
+  return res
+    .status(403)
+    .json({ message: "Access denied. Customers are only allowed." });
 };
 
 // Middleware to check if seller owns products in an order
