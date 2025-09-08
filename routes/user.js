@@ -3,21 +3,35 @@ const router = express.Router();
 const validation = require("../middleware/validation");
 const auth = require("../controllers/AuthController");
 const user = require("../controllers/UserController");
-const { checkAuth, checkAdmin, checkCustomer } = require("../middleware/checkAuth");
+const {
+  checkAuth,
+  checkAdmin,
+  checkCustomer,
+} = require("../middleware/checkAuth");
 
 // ---------- AUTH ----------
 router.post("/register", validation.Email, validation.Password, auth.register);
 
 // ---------- USER ADDRESSES (specific routes first) ----------
-router.get("/address", checkCustomer, checkAuth, user.getAddress);
-router.post("/address", checkCustomer, checkAuth, user.addAddresses);
-router.put("/address/:addressId", checkCustomer, checkAuth, user.updateAddresses);
-router.delete("/address/:addressId", checkCustomer, checkAuth, user.deleteAddress);
+router.get("/address", checkAuth, checkCustomer, user.getAddress);
+router.post("/address", checkAuth, checkCustomer, user.addAddresses);
+router.put(
+  "/address/:addressId",
+  checkAuth,
+  checkCustomer,
+  user.updateAddresses
+);
+router.delete(
+  "/address/:addressId",
+  checkAuth,
+  checkCustomer,
+  user.deleteAddress
+);
 
 // ---------- USERS ----------
-router.get("/", checkAdmin, checkAuth, user.getAllUsers);
+router.get("/", checkAuth, checkAdmin, user.getAllUsers);
 router.get("/:id_number", checkAuth, user.getUserByIdNumber);
-router.put("/:id", checkAdmin, checkAuth, user.updateUserByIdNumber);
-router.delete("/:id", checkAdmin, checkAuth, user.deleteUserById);
+router.put("/:id", checkAuth, checkAdmin, user.updateUserByIdNumber);
+router.delete("/:id", checkAuth, checkAdmin, user.deleteUserById);
 
 module.exports = router;

@@ -37,6 +37,10 @@ function _schema(mongoose) {
             required: true,
             min: 1,
           },
+          isRate: {
+            type: Boolean,
+            default: false,
+          },
         },
       ],
       totalAmount: {
