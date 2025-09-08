@@ -28,7 +28,8 @@ exports.createProduct = async (req, res) => {
 
 exports.getAllProducts = async (req, res) => {
   try {
-    const { limit, page, status, type, id, search, isApproved } = req.query;
+    const { limit, page, status, type, id, search, isApproved, category } =
+      req.query;
     const itemsLimit = Math.max(parseInt(limit) || 10, 1);
     const pageNumber = Math.max(parseInt(page) || 1, 1);
     const skip = (pageNumber - 1) * itemsLimit;
@@ -36,6 +37,7 @@ exports.getAllProducts = async (req, res) => {
     const condition = {
       status: "Active",
       deleted_at: null,
+      isApproved: true,
     };
 
     if (status) condition.status = status;
@@ -47,6 +49,27 @@ exports.getAllProducts = async (req, res) => {
       ];
     }
     if (isApproved) condition.isApproved = isApproved;
+
+    // Handle category filtering by name or ObjectId
+    if (category) {
+      // Check if category is a valid ObjectId
+      const mongoose = require("mongoose");
+      if (mongoose.Types.ObjectId.isValid(category)) {
+        condition.category = category;
+      } else {
+        // Find category by name
+        const categoryDoc = await DB.category.findOne({
+          name: { $regex: new RegExp(`^${category}$`, "i") },
+          status: "Active",
+        });
+        if (categoryDoc) {
+          condition.category = categoryDoc._id;
+        } else {
+          // If category name not found, return empty result
+          return res.status(404).json({ message: "Category not found" });
+        }
+      }
+    }
 
     const products = await DB.product
       .find(condition)

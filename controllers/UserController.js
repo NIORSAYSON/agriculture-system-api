@@ -258,13 +258,6 @@ exports.deleteAddress = async (req, res) => {
       return res.status(404).json({ message: "User not found." });
     }
 
-    // If no addresses left, return error
-    if (user.address.length === 0) {
-      return res
-        .status(400)
-        .json({ message: "No more addresses left to delete." });
-    }
-
     return res.status(200).json({
       message: "Address deleted successfully",
       data: user.address,
