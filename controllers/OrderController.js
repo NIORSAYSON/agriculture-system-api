@@ -1,6 +1,7 @@
 const DB = require("../models");
 const orderHelper = require("../helper/orderHelper");
 const { connectedUsers } = require("../socket/chatSocket");
+const Message = require("../models/Message");
 
 exports.placeOrder = async (req, res) => {
   try {
@@ -170,6 +171,25 @@ exports.placeOrder = async (req, res) => {
         .to(`seller:${sellerId}`)
         .emit("newOrderNotificationPopupNow", notif);
       console.log(`📢 Notified seller ${sellerId} via room seller:${sellerId}`);
+
+      // --- Send a message from seller to user ---
+      const thankYouMsg = `Hello ${
+        cart.user.firstname
+      }, thank you for your order of ${productNames.join(", ")}! Your order #${
+        newOrder.orderId
+      } will be processed soon.`;
+
+      await Message.create({
+        senderId: sellerId,
+        receiverId: cart.user._id,
+        content: thankYouMsg,
+      });
+
+      // Optionally, notify the user via socket
+      const userSocketId = connectedUsers.get(cart.user._id.toString());
+      if (userSocketId) {
+        io.to(userSocketId).emit("refreshConversation", { refresh: true });
+      }
     }
 
     // --- Clear cart after order ---
@@ -365,6 +385,21 @@ exports.buyNow = async (req, res) => {
 
       global.io.to(`seller:${sellerId}`).emit("newOrderNotification", notif);
       // console.log(`📢 Notified seller ${sellerId} via room seller:${sellerId}`);
+
+      // --- Send a message from seller to user ---
+      const thankYouMsg = `Hello ${user.firstname}, thank you for your order of ${product.name}! Your order #${newOrder.orderId} will be processed soon.`;
+
+      await Message.create({
+        senderId: sellerId,
+        receiverId: user._id,
+        content: thankYouMsg,
+      });
+
+      // Optionally, notify the user via socket
+      const userSocketId = connectedUsers.get(user._id.toString());
+      if (userSocketId) {
+        io.to(userSocketId).emit("refreshConversation", { refresh: true });
+      }
     }
 
     return res.status(201).json({
