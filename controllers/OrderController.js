@@ -842,3 +842,49 @@ exports.getRateableProducts = async (req, res) => {
     });
   }
 };
+
+exports.cancelOrder = async (req, res) => {
+  try {
+    const { id_number } = req.user;
+    const { orderId } = req.query;
+
+    console.log();
+
+    // Find user
+    const user = await DB.user.findOne({ id_number });
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // First check if order exists and belongs to user
+    const existingOrder = await DB.order.findOne({
+      orderId: orderId,
+      user: user._id,
+      deleted_at: null,
+    });
+
+    // Check if order exists
+    if (!existingOrder) {
+      return res.status(404).json({ message: "Order not found" });
+    }
+
+    // Check if order status is "Processing"
+    if (existingOrder.status !== "Processing") {
+      return res.status(400).json({
+        message: `Cannot cancel order. Order status is ${existingOrder.status}. Only orders with status "Processing" can be cancelled.`,
+      });
+    }
+
+    // Update status to "Cancelled"
+    existingOrder.status = "Cancelled";
+    await existingOrder.save();
+
+    return res.status(200).json({ message: "Order cancelled successfully" });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      message: "Internal server error",
+      error: error.message,
+    });
+  }
+};

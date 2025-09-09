@@ -43,4 +43,6 @@ router.put(
 // Order details (accessible by both buyers and sellers)
 router.get("/:orderId", checkAuth, OrderController.getOrderDetails);
 
+router.post("/cancel", checkAuth, checkCustomer, OrderController.cancelOrder);
+
 module.exports = router;

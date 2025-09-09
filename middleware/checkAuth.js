@@ -59,7 +59,7 @@ exports.checkAdmin = function (req, res, next) {
 };
 
 exports.checkCustomer = function (req, res, next) {
-  if (req.user && req.user.role.toLowerCase() === "user") {
+  if (req.user && req.user.role.toLowerCase() === "buyer") {
     return next();
   }
   return res
