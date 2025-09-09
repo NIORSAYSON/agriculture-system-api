@@ -13,10 +13,11 @@ const initRoutes = (app) => {
   router.use("/reviews", require("./reviews"));
   router.use("/notification", require("./notification"));
   router.use("/admin", require("./admin"));
-  
-  router.get("/", (req, res) => {
-    return res.json({
-      version: "beta",
+
+  app.get("/", (req, res) => {
+    res.status(200).json({
+      message: "Connected to backend",
+      status: "success",
     });
   });
 
