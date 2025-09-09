@@ -13,8 +13,8 @@ const initRoutes = (app) => {
   router.use("/reviews", require("./reviews"));
   router.use("/notification", require("./notification"));
   router.use("/admin", require("./admin"));
-  
-  router.get("/", (req, res) => {
+
+  app.get("/", (req, res) => {
     return res.json({
       version: "beta",
     });
