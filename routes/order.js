@@ -10,6 +10,12 @@ const {
 
 // Customer order routes
 router.get("/", checkAuth, checkCustomer, OrderController.getOrders);
+router.get(
+  "/rateable-products",
+  checkAuth,
+  checkCustomer,
+  OrderController.getRateableProducts
+);
 router.post(
   "/placeOrder",
   checkAuth,

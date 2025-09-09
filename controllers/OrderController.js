@@ -780,3 +780,65 @@ exports.getSellerOrderStats = async (req, res) => {
     });
   }
 };
+
+exports.getRateableProducts = async (req, res) => {
+  try {
+    const { id_number } = req.user;
+
+    // Find user
+    const user = await DB.user.findOne({ id_number });
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Find delivered orders for this user where products haven't been rated
+    const orders = await DB.order
+      .find({
+        user: user._id,
+        status: "Delivered",
+        deleted_at: null,
+        "products.isRate": { $ne: true },
+      })
+      .populate({
+        path: "products.product",
+        select: "name image price description",
+      })
+      .select("orderId products createdAt");
+
+    if (!orders || orders.length === 0) {
+      return res.status(200).json({
+        message: "No products available to rate",
+        rateableProducts: [],
+      });
+    }
+
+    // Extract products that haven't been rated
+    const rateableProducts = [];
+    orders.forEach((order) => {
+      order.products.forEach((item) => {
+        if (!item.isRate && item.product) {
+          rateableProducts.push({
+            orderId: order.orderId,
+            productId: item.product._id,
+            productName: item.product.name,
+            productImage: item.product.image,
+            productPrice: item.product.price,
+            quantity: item.quantity,
+            orderDate: order.createdAt,
+          });
+        }
+      });
+    });
+
+    return res.status(200).json({
+      message: "Rateable products retrieved successfully",
+      rateableProducts: rateableProducts,
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      message: "Internal server error",
+      error: error.message,
+    });
+  }
+};
