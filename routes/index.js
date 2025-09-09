@@ -15,8 +15,9 @@ const initRoutes = (app) => {
   router.use("/admin", require("./admin"));
 
   app.get("/", (req, res) => {
-    return res.json({
-      version: "beta",
+    res.status(200).json({
+      message: "Connected to backend",
+      status: "success",
     });
   });
 
