@@ -10,7 +10,7 @@ exports.getAdminDashboard = async (req, res) => {
     }
 
     const totalUsers = await DB.user.countDocuments({
-      role: "user",
+      role: "buyer",
       status: "Active",
       deleted_at: null,
     });
