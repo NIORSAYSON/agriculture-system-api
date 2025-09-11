@@ -3,62 +3,6 @@ const bcrypt = require("bcrypt");
 const DB = require("../models");
 const jwt = require("jsonwebtoken");
 const jwtHelper = require("../helper/token");
-const { default: firebase } = require("firebase/compat/app");
-
-exports.googleLogin = async (req, res) => {
-  try {
-    const firebaseToken = req.headers.authorization?.split("Bearer ")[1];
-
-    if (!firebaseToken) {
-      return res.status(401).json({
-        message: "No Firebase token provided",
-      });
-    }
-
-    // Verify the Firebase token
-    const decodedToken = await admin.auth().verifyIdToken(firebaseToken);
-
-    // Find user by email
-    let user = await DB.user.findOne({ email: decodedToken.email });
-
-    if (!user) {
-      // If no user exists, create a new one
-      user = await DB.user.create({
-        firstname: req.body.firstname,
-        lastname: req.body.lastname,
-        email: decodedToken.email,
-        role: "user", // default role
-        id_number: `USR-${Math.floor(10000 + Math.random() * 90000)}`,
-      });
-    }
-
-    const userData = {
-      id: user._id,
-      role: user.role,
-      id_number: user.id_number,
-      firstname: user.firstname,
-      lastname: user.lastname,
-      email: user.email,
-    };
-
-    const refreshToken = jwtHelper.generateToken("refresh", userData);
-    jwtHelper.configCookie(res, "set", refreshToken);
-
-    return res.status(200).json({
-      message: "Google login successful",
-      user: req.user,
-      tokens: {
-        firebaseToken: firebaseToken,
-        refreshToken,
-      },
-    });
-  } catch (error) {
-    return res.status(500).json({
-      message: "Internal Server Error",
-      error: error.message,
-    });
-  }
-};
 
 exports.logout = async (req, res) => {
   try {
@@ -194,8 +138,8 @@ exports.register = async (req, res) => {
     let uniqueId;
     if (role === "admin") {
       uniqueId = `ADM-${Math.floor(10000 + Math.random() * 90000)}`;
-    } else if (role === "user") {
-      uniqueId = `USR-${Math.floor(10000 + Math.random() * 90000)}`;
+    } else if (role === "buyer") {
+      uniqueId = `BYR-${Math.floor(10000 + Math.random() * 90000)}`;
     } else {
       uniqueId = `SLR-${Math.floor(10000 + Math.random() * 90000)}`;
     }
