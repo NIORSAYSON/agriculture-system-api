@@ -41,7 +41,7 @@ function _schema(mongoose) {
       role: {
         type: String,
         required: true,
-        default: "user",
+        default: "buyer",
       },
       avatar: {
         type: String,
