@@ -6,13 +6,22 @@ const Message = require("../models/Message");
 exports.placeOrder = async (req, res) => {
   try {
     const { id_number } = req.user;
-    let { addressId } = req.body || {};
+    let {
+      addressId,
+      shippingFee = 0,
+      deliveryMethod = "Delivery",
+    } = req.body || {};
     const io = req.app.get("io");
 
     // --- Find user ---
     const user = await DB.user.findOne({ id_number });
     if (!user) {
       return res.status(404).json({ message: "User not found" });
+    }
+
+    // --- If pickup, set shipping fee to 0 ---
+    if (deliveryMethod === "Pickup") {
+      shippingFee = 0;
     }
 
     // --- Determine shippingAddress ---
@@ -109,7 +118,9 @@ exports.placeOrder = async (req, res) => {
       id_number: cart.id_number,
       user: cart.user,
       products: cart.products,
-      totalAmount: cart.total,
+      totalAmount: cart.total + shippingFee,
+      shippingFee: shippingFee,
+      deliveryMethod: deliveryMethod,
       status: "Processing",
       shippingAddress,
       date: new Date(),
@@ -261,13 +272,22 @@ exports.getOrders = async (req, res) => {
 exports.buyNow = async (req, res) => {
   try {
     const { id_number } = req.user;
-    const { productId, quantity, addressId } = req.body;
+    const {
+      productId,
+      quantity,
+      addressId,
+      shippingFee = 0,
+      deliveryMethod = "Delivery",
+    } = req.body;
 
     // --- Validate user ---
     const user = await DB.user.findOne({ id_number });
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
+
+    // --- If pickup, set shipping fee to 0 ---
+    let finalShippingFee = deliveryMethod === "Pickup" ? 0 : shippingFee;
 
     // --- Determine shippingAddress ---
     let shippingAddress;
@@ -346,7 +366,7 @@ exports.buyNow = async (req, res) => {
       price: product.price,
     };
 
-    const totalAmount = product.price * qty;
+    const totalAmount = product.price * qty + finalShippingFee;
 
     // --- Generate unique random 8-digit order ID ---
     const orderId = await orderHelper.generateOrderId();
@@ -358,6 +378,8 @@ exports.buyNow = async (req, res) => {
       user: user._id,
       products: [orderProduct],
       totalAmount,
+      shippingFee: finalShippingFee,
+      deliveryMethod: deliveryMethod,
       status: "Processing",
       shippingAddress,
       date: new Date(),

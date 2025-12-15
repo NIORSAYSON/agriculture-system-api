@@ -317,25 +317,38 @@ exports.getSellerProduct = async (req, res) => {
 
 exports.deleteProduct = async (req, res) => {
   try {
-    const { id_number } = req.user;
+    const { id_number, role } = req.user;
     const productId = req.params.id;
 
-    // Find seller
-    const seller = await DB.user.findOne({ id_number, role: "seller" });
-    if (!seller) {
-      return res.status(404).json({ message: "Seller not found" });
-    }
-
-    // Find product and verify ownership
+    // Find product
     const product = await DB.product.findOne({
       _id: productId,
-      seller_id: seller._id,
       deleted_at: null,
     });
 
     if (!product) {
       return res.status(404).json({
-        message: "Product not found or you don't have permission to delete it",
+        message: "Product not found",
+      });
+    }
+
+    // If user is a seller, verify ownership
+    if (role.toLowerCase() === "seller") {
+      const seller = await DB.user.findOne({ id_number, role: "seller" });
+      if (!seller) {
+        return res.status(404).json({ message: "Seller not found" });
+      }
+
+      if (product.seller_id.toString() !== seller._id.toString()) {
+        return res.status(403).json({
+          message: "You don't have permission to delete this product",
+        });
+      }
+    }
+    // Admins can delete any product without ownership check
+    else if (role.toLowerCase() !== "admin") {
+      return res.status(403).json({
+        message: "Access denied. Only sellers and admins can delete products.",
       });
     }
 

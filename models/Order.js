@@ -48,10 +48,20 @@ function _schema(mongoose) {
         required: true,
         min: 0,
       },
+      shippingFee: {
+        type: Number,
+        default: 0,
+      },
       status: {
         type: String,
         enum: ["In Transit", "Delivered", "Processing", "Cancelled"],
         default: "Processing",
+      },
+      deliveryMethod: {
+        type: String,
+        enum: ["Delivery", "Pickup"],
+        default: "Delivery",
+        required: true,
       },
       shippingAddress: {
         type: Object,
